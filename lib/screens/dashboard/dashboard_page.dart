@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'dashboard_view.dart';
-import '../../theme.dart';
 import '../../models/dashboard.dart';
+import '../../widgets/app_shell.dart';
 import 'sample_dashboard.dart';
 
 
@@ -17,11 +17,9 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final DashboardData sample = DashboardData.fromJson(jsonDecode(sampleDashboardJson) as Map<String, dynamic>);
 
-    return Scaffold(
-      backgroundColor: AppColors.card,
-      body: SafeArea(
-        child: DashboardView(data: sample, isSample: true)
-      ),
+    return AppShell(
+      active: Section.dashboard,
+      child: DashboardView(data: sample, isSample: true),
     );
   }
 }

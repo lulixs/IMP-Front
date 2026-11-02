@@ -36,10 +36,29 @@ void main() {
     expect(navigator.canPop(), isFalse);
   });
 
-  testWidgets('skipSetup opens the dashboard directly', (tester) async {
-    await tester.pumpWidget(const ImpApp(skipSetup: true));
+  testWidgets('StartScreen.dashboard opens the dashboard directly', (tester) async {
+    await tester.pumpWidget(const ImpApp(start: StartScreen.dashboard));
 
     expect(find.byType(DashboardPage), findsOneWidget);
     expect(find.byType(FirstSetupFlow), findsNothing);
+  });
+
+  testWidgets('Signing in from StartScreen.login opens the dashboard, and back cannot return', (tester) async {
+    tester.view.physicalSize = const Size(1024, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const ImpApp(start: StartScreen.login));
+
+    await tester.enterText(fields.at(0), 'store@example.org');
+    await tester.enterText(fields.at(1), 'x');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+    for (final digit in '123456'.split('')) {
+      await tapButton(tester, digit);
+    }
+
+    expect(find.byType(DashboardPage), findsOneWidget);
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    expect(navigator.canPop(), isFalse);
   });
 }
