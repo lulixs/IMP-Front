@@ -8,9 +8,9 @@ import 'setup_layout.dart';
 /// signed in when setup is done. Setup cannot be finished without one (D-133).
 class FirstEmployeePage extends StatefulWidget {
   /// Called with the trimmed name and the PIN once every field is valid.
-  final void Function(String name, String pin) onFinish;
+  final void Function(String name, String pin) onNext;
 
-  const FirstEmployeePage({super.key, required this.onFinish});
+  const FirstEmployeePage({super.key, required this.onNext});
 
   @override
   State<FirstEmployeePage> createState() => _FirstEmployeePageState();
@@ -36,9 +36,9 @@ class _FirstEmployeePageState extends State<FirstEmployeePage> {
     super.dispose();
   }
 
-  void _finish() {
+  void _next() {
     if (_formKey.currentState!.validate()) {
-      widget.onFinish(_name.text.trim(), _pin.text);
+      widget.onNext(_name.text.trim(), _pin.text);
     }
   }
 
@@ -51,7 +51,7 @@ class _FirstEmployeePageState extends State<FirstEmployeePage> {
 
     return SetupLayout(
       step: 3,
-      subtitle: 'First-time setup, step 3 of 3. Create an employee.',
+      subtitle: 'Create an employee.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -59,7 +59,7 @@ class _FirstEmployeePageState extends State<FirstEmployeePage> {
           children: [
             NoteBox(
               'Create an employee-specific account to complete setup. '
-              'Employees will log in with a personal pin to manage IMP.'
+              'Employees will log in with a personal PIN to manage IMP.'
             ),
             const FieldLabel('Employee name'),
             TextFormField(
@@ -101,7 +101,7 @@ class _FirstEmployeePageState extends State<FirstEmployeePage> {
                         keyboardType: TextInputType.number,
                         inputFormatters: pinFormatters,
                         validator: (value) => value != _pin.text ? 'PINs do not match' : null,
-                        onFieldSubmitted: (_) => _finish(),
+                        onFieldSubmitted: (_) => _next(),
                       ),
                     ],
                   ),
@@ -109,7 +109,7 @@ class _FirstEmployeePageState extends State<FirstEmployeePage> {
               ],
             ),
             const SizedBox(height: 20),
-            PrimaryButton('Finish setup', onPressed: _finish),
+            SetupButtons(onNext: _next),
           ],
         ),
       ),

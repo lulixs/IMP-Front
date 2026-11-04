@@ -96,3 +96,28 @@ class PrimaryButton extends StatelessWidget {
     );
   }
 }
+
+/// Full-width outlined pill button, like "Back" on the setup screens.
+class SecondaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  const SecondaryButton(this.label, {super.key, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.card,
+          foregroundColor: AppColors.ink,
+          side: const BorderSide(color: AppColors.ink, width: 1.5),
+          textStyle: const TextStyle(fontSize: 15),
+        ),
+        child: Text(label),
+      ),
+    );
+  }
+}

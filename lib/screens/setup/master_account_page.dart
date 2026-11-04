@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../validators.dart';
 import '../../widgets/common.dart';
 import 'setup_layout.dart';
 
@@ -15,10 +16,6 @@ class MasterAccountPage extends StatefulWidget {
 }
 
 class _MasterAccountPageState extends State<MasterAccountPage> {
-  /// At least one character before the @, then at least one between the @ and a dot,
-  /// then at least one after the dot. One @ only, and no spaces.
-  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
   static const _minPasswordLength = 8;
 
   final _formKey = GlobalKey<FormState>();
@@ -44,7 +41,7 @@ class _MasterAccountPageState extends State<MasterAccountPage> {
   Widget build(BuildContext context) {
     return SetupLayout(
       step: 1,
-      subtitle: 'First-time setup, step 1 of 3. Create the master account.',
+      subtitle: 'Create the master account.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -52,19 +49,14 @@ class _MasterAccountPageState extends State<MasterAccountPage> {
           children: [
             const NoteBox(
               'Welcome to IMP! Please set up the store\'s master account below. '
-              'The password below will be used for account authetication and privilege elevation.',
+              'The password below will be used for account authentication and privilege elevation.',
             ),
             const FieldLabel('Email'),
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(hintText: 'e.g. manager@example.org'),
-              validator: (value) {
-                final email = value?.trim() ?? '';
-                if (email.isEmpty) return 'Enter an email';
-                if (!_emailPattern.hasMatch(email)) return 'Enter a valid email';
-                return null;
-              },
+              validator: validateEmail,
             ),
             const SizedBox(height: 14),
             const FieldLabel('Password'),

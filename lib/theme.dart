@@ -8,8 +8,12 @@ class AppColors {
   static const ink4 = Color(0xFFABABAB); // example text inside empty fields
   static const line = Color(0xFFBDBDBD); // card borders
   static const field = Color(0xFF9D9D9D); // text field borders
-  static const panel = Color(0xFFE6E6E6); // setup and sign-in background
+  static const panel = Color(0xFFE6E6E6); // setup and sign-in background, sidebar
+  static const soft = Color(0xFFF3F3F3); // bottom bar
   static const card = Color(0xFFFFFFFF); // cards
+  static const half = Color(0xFFA8A8A8); // "Half" part of the fullness bar
+  static const barEmpty = Color(0xFFF4F4F4); // "Empty" part of the fullness bar
+  static const barBorder = Color(0xFF9A9A9A); // fullness bar outline
 }
 
 ThemeData buildTheme() {

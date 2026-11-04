@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 
-/// The frame shared by the three first-time setup steps (wireframes 01c to 01e):
-/// logo, title, subtitle, the list of steps, and a white card for the step's form.
+/// The frame shared by the first-time setup steps (wireframes 01c to 01e, plus
+/// Confirmation): logo, title, subtitle, the list of steps, and a white card for
+/// the step's form.
 class SetupLayout extends StatelessWidget {
-  static const steps = ['Master account', 'Tablet name', 'First employee'];
+  static const steps = ['Master account', 'Tablet name', 'First employee', 'Confirmation'];
 
-  final int step; // 1, 2, or 3
+  final int step; // 1 to steps.length
+  /// Shown after "First-time setup, step x of y." The step count is added here.
   final String subtitle;
   final Widget child;
 
@@ -29,7 +31,7 @@ class SetupLayout extends StatelessWidget {
                 const Text('Set up IMP', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Text(
-                  subtitle,
+                  'First-time setup, step $step of ${steps.length}. $subtitle',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 14, color: AppColors.ink2),
                 ),
@@ -66,6 +68,26 @@ class SetupLayout extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Back and Next side by side, for every setup step after the first. Back returns
+/// to the previous step, which still has its fields filled in.
+class SetupButtons extends StatelessWidget {
+  final String nextLabel;
+  final VoidCallback onNext;
+
+  const SetupButtons({super.key, this.nextLabel = 'Next', required this.onNext});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: SecondaryButton('Back', onPressed: () => Navigator.of(context).pop())),
+        const SizedBox(width: 12),
+        Expanded(child: PrimaryButton(nextLabel, onPressed: onNext)),
+      ],
     );
   }
 }

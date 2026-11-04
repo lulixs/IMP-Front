@@ -38,7 +38,7 @@ class _TabletNamePageState extends State<TabletNamePage> {
   Widget build(BuildContext context) {
     return SetupLayout(
       step: 2,
-      subtitle: 'First-time setup, step 2 of 3. Name this device.',
+      subtitle: 'Name this device.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -54,7 +54,7 @@ class _TabletNamePageState extends State<TabletNamePage> {
               onFieldSubmitted: (_) => _next(),
             ),
             const SizedBox(height: 20),
-            PrimaryButton('Next', onPressed: _next),
+            SetupButtons(onNext: _next),
           ],
         ),
       ),
