@@ -27,6 +27,7 @@ class ApiClient {
         screen: screen,
       );
     } on http.ClientException {
+        // Message changes when active in store: ... Check the tablet's internet connection
       throw ApiException(
         'Connection to server failed. Ensure the server is running.',
         screen: screen,
