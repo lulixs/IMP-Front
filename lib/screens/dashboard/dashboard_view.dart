@@ -6,21 +6,18 @@ import 'category_card.dart';
 
 /// The dashboard's content (wireframe 03a): title, headline, the fullness key, and
 /// one card per category. It only draws the [DashboardData] it is given and never
-/// loads data itself, so it works the same with sample data or the API's.
+/// loads data itself, so DashboardPage gives it the API's data and tests can give it their own.
 class DashboardView extends StatelessWidget {
   final DashboardData data;
 
-  /// True while [data] is the sample, not a response from the server.
-  final bool isSample;
-
-  const DashboardView({super.key, required this.data, this.isSample = false});
+  const DashboardView({super.key, required this.data});
 
   /// One CategoryCard per category in [data], in the order given.
   List<Widget> _cards() {
     final cards = <Widget>[];
 
     for (final cat in data.categories) {
-      cards.add(CategoryCard(category: cat, isSample: isSample));
+      cards.add(CategoryCard(category: cat));
     }
 
     return cards;
@@ -32,9 +29,8 @@ class DashboardView extends StatelessWidget {
       boxes += category.total;
     }
     final categories = data.categories.length;
-    final headline = '$boxes racked ${boxes == 1 ? 'box' : 'boxes'} in '
+    return '$boxes racked ${boxes == 1 ? 'box' : 'boxes'} in '
         '$categories ${categories == 1 ? 'category' : 'categories'}.';
-    return isSample ? '$headline Sample data, not from the server.' : headline;
   }
 
   @override

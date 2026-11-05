@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'api/api_client.dart';
 import 'screens/dashboard/dashboard_page.dart';
 import 'screens/login/login_flow.dart';
 import 'screens/setup/first_setup_flow.dart';
@@ -13,7 +14,10 @@ enum StartScreen { setup, login, dashboard }
 class ImpApp extends StatelessWidget {
   final StartScreen start;
 
-  const ImpApp({super.key, this.start = StartScreen.setup});
+  /// Passed to the pages that load data. Tests give a fake one so nothing reaches a real server.
+  final ApiClient? api;
+
+  const ImpApp({super.key, this.start = StartScreen.setup, this.api});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +28,7 @@ class ImpApp extends StatelessWidget {
       home: switch (start) {
         StartScreen.setup => _setup(),
         StartScreen.login => _login(),
-        StartScreen.dashboard => const DashboardPage(),
+        StartScreen.dashboard => DashboardPage(api: api),
       },
     );
   }
@@ -51,7 +55,7 @@ class ImpApp extends StatelessWidget {
   /// can't return to setup or sign-in.
   void _openDashboard(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const DashboardPage()),
+      MaterialPageRoute(builder: (_) => DashboardPage(api: api)),
       (_) => false,
     );
   }

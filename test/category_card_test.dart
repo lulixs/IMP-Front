@@ -24,12 +24,12 @@ void main() {
     );
   }
 
-  Future<void> showCard(WidgetTester tester, DashboardCategory c, {bool isSample = false}) {
+  Future<void> showCard(WidgetTester tester, DashboardCategory c) {
     return tester.pumpWidget(
       MaterialApp(
         theme: buildTheme(),
         home: Scaffold(
-          body: Center(child: SizedBox(width: 260, child: CategoryCard(category: c, isSample: isSample))),
+          body: Center(child: SizedBox(width: 260, child: CategoryCard(category: c))),
         ),
       ),
     );
@@ -69,13 +69,5 @@ void main() {
     await showCard(tester, category(storedTooLong: 2));
     expect(find.text('2 stored too long'), findsOneWidget);
     expect(find.text('No alerts'), findsNothing);
-  });
-
-  testWidgets('The SAMPLE tag shows only for sample data', (tester) async {
-    await showCard(tester, category());
-    expect(find.text('SAMPLE'), findsNothing);
-
-    await showCard(tester, category(), isSample: true);
-    expect(find.text('SAMPLE'), findsOneWidget);
   });
 }

@@ -8,10 +8,7 @@ import '../../theme.dart';
 class CategoryCard extends StatelessWidget {
   final DashboardCategory category;
 
-  /// Shows a SAMPLE tag, for data that did not come from the server.
-  final bool isSample;
-
-  const CategoryCard({super.key, required this.category, this.isSample = false});
+  const CategoryCard({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -28,22 +25,14 @@ class CategoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: Text(
-                    symbol == null ? c.name : '$symbol ${c.name}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.2),
-                  ),
-                ),
-              ),
-              if (isSample) const _Tag('SAMPLE', dark: false),
-            ],
+          SizedBox(
+            height: 44,
+            child: Text(
+              symbol == null ? c.name : '$symbol ${c.name}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.2),
+            ),
           ),
           const SizedBox(height: 4),
           Text.rich(
@@ -64,7 +53,7 @@ class CategoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (c.storedTooLongCount > 0)
-            _Tag('${c.storedTooLongCount} stored too long', dark: true)
+            _Tag('${c.storedTooLongCount} stored too long')
           else
             const Text('No alerts', style: TextStyle(fontSize: 12, color: AppColors.ink3)),
         ],
@@ -104,25 +93,24 @@ class _FullnessBar extends StatelessWidget {
   }
 }
 
-/// Small rounded label: dark for alerts, outlined for SAMPLE.
+/// Small dark rounded label, used for the stored too long alert.
 class _Tag extends StatelessWidget {
   final String text;
-  final bool dark;
 
-  const _Tag(this.text, {required this.dark});
+  const _Tag(this.text);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: dark ? AppColors.ink : AppColors.card,
-        border: Border.all(color: dark ? AppColors.ink : AppColors.ink2, width: 1.5),
+        color: AppColors.ink,
+        border: Border.all(color: AppColors.ink, width: 1.5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: dark ? Colors.white : AppColors.ink2),
+        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white),
       ),
     );
   }

@@ -17,14 +17,13 @@ void main() {
     );
   }
 
-  Future<void> showView(WidgetTester tester, List<DashboardCategory> categories, {bool isSample = false}) {
+  Future<void> showView(WidgetTester tester, List<DashboardCategory> categories) {
     return tester.pumpWidget(
       MaterialApp(
         theme: buildTheme(),
         home: Scaffold(
           body: DashboardView(
             data: DashboardData(alertThresholdDays: 180, categories: categories),
-            isSample: isSample,
           ),
         ),
       ),
@@ -48,12 +47,6 @@ void main() {
 
     expect(find.text('0 racked boxes in 0 categories.'), findsOneWidget);
     expect(find.text('No categories yet.'), findsOneWidget);
-  });
-
-  testWidgets('Sample data is called out in the headline', (tester) async {
-    await showView(tester, [category(1, 3, 2, 1)], isSample: true);
-
-    expect(find.text('6 racked boxes in 1 category. Sample data, not from the server.'), findsOneWidget);
   });
 
   testWidgets('Shows the title and the fullness key', (tester) async {
