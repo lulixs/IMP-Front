@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:imp_app/api/api_client.dart';
 import 'package:imp_app/main.dart';
 import 'package:imp_app/screens/dashboard/dashboard_page.dart';
 import 'package:imp_app/screens/setup/first_setup_flow.dart';
 
 void main() {
   final fields = find.byType(TextFormField);
+
+  // The dashboard loads data when it opens, so give it a fake server instead of a real one.
+  final api = ApiClient(
+    client: MockClient((request) async => http.Response('{"alertThresholdDays": 180, "categories": []}', 200)),
+  );
 
   Future<void> tapButton(WidgetTester tester, String label) async {
     await tester.ensureVisible(find.text(label));
@@ -14,7 +22,7 @@ void main() {
   }
 
   testWidgets('Confirming setup opens the dashboard, and back cannot return to setup', (tester) async {
-    await tester.pumpWidget(const ImpApp());
+    await tester.pumpWidget(ImpApp(api: api));
 
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'secret123');
@@ -37,7 +45,7 @@ void main() {
   });
 
   testWidgets('StartScreen.dashboard opens the dashboard directly', (tester) async {
-    await tester.pumpWidget(const ImpApp(start: StartScreen.dashboard));
+    await tester.pumpWidget(ImpApp(start: StartScreen.dashboard, api: api));
 
     expect(find.byType(DashboardPage), findsOneWidget);
     expect(find.byType(FirstSetupFlow), findsNothing);
@@ -47,7 +55,7 @@ void main() {
     tester.view.physicalSize = const Size(1024, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(const ImpApp(start: StartScreen.login));
+    await tester.pumpWidget(ImpApp(start: StartScreen.login, api: api));
 
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'x');
