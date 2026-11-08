@@ -58,6 +58,10 @@ test/                      tests for the screens, widgets, and models
 prototype/                 the old click-through app, kept as a guide for style and layout
 ```
 
+## Claude prompt logs
+
+Every prompt sent to Claude Code in this repo is saved word for word, with a timestamp, in `claude_logs/`. There is one markdown file per session, named by date, person, and session. A hook does the logging: `.claude/settings.json` runs `.claude/hooks/log_prompt.py` each time a prompt is sent, so it needs Python 3 (`python3` or `python` on your PATH). Commit the log files along with your other changes. Nobody edits or deletes them, Claude included, and Claude doesn't read them for context.
+
 ## API contracts
 
 The shape of each API response is defined in the backend repo under `docs/api/`, for example `docs/api/dashboard.md`. If a shape needs to change, change that file first, then the code on both sides.
