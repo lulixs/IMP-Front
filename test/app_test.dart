@@ -37,6 +37,8 @@ void main() {
     await tapButton(tester, 'Confirm');
 
     expect(find.byType(DashboardPage), findsOneWidget);
+    expect(tester.widget<DashboardPage>(find.byType(DashboardPage)).session.employeeName, 'Mabel',
+        reason: 'the employee made during setup is the one signed in');
     expect(find.byType(FirstSetupFlow), findsNothing);
 
     // Nothing is left behind the dashboard, so the back button has nowhere to go.
@@ -48,6 +50,8 @@ void main() {
     await tester.pumpWidget(ImpApp(start: StartScreen.dashboard, api: api));
 
     expect(find.byType(DashboardPage), findsOneWidget);
+    expect(tester.widget<DashboardPage>(find.byType(DashboardPage)).session.employeeName, 'Dan Finkle',
+        reason: 'the stub employee');
     expect(find.byType(FirstSetupFlow), findsNothing);
   });
 
@@ -66,6 +70,8 @@ void main() {
     }
 
     expect(find.byType(DashboardPage), findsOneWidget);
+    expect(tester.widget<DashboardPage>(find.byType(DashboardPage)).session.employeeName, 'Dan Finkle',
+        reason: 'the employee who entered their PIN');
     final navigator = tester.state<NavigatorState>(find.byType(Navigator));
     expect(navigator.canPop(), isFalse);
   });

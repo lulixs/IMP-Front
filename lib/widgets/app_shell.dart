@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../session.dart';
 import '../theme.dart';
 import 'common.dart';
 
@@ -26,16 +27,20 @@ const _masterItems = [
 ///
 /// The sidebar items and bottom buttons don't do anything yet.
 class AppShell extends StatelessWidget {
+  /// The current sign-in. Every page gets the same Session and passes it to its
+  /// AppShell, so Master mode and the employee's name carry over between pages.
+  final Session session;
+
   /// The sidebar item to highlight.
   final Section active;
   final Widget child;
 
-  const AppShell({super.key, required this.active, required this.child});
+  const AppShell({super.key, required this.session, required this.active, required this.child});
 
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < 640;
-    final sidebar = _Sidebar(active: active);
+    final sidebar = _Sidebar(session: session, active: active);
     final main = Column(
       children: [
         Expanded(child: child),
@@ -70,11 +75,17 @@ class AppShell extends StatelessWidget {
 }
 
 class _Sidebar extends StatelessWidget {
+  final Session session;
   final Section active;
-  const _Sidebar({required this.active});
+  const _Sidebar({required this.session, required this.active});
 
   @override
   Widget build(BuildContext context) {
+    // Redraws when Master mode is turned on or off.
+    return ListenableBuilder(listenable: session, builder: _build);
+  }
+
+  Widget _build(BuildContext context, Widget? _) {
     return Container(
       color: AppColors.panel,
       child: ListView(
@@ -90,8 +101,9 @@ class _Sidebar extends StatelessWidget {
               style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.ink2),
             ),
           ),
-          // Locked until Master mode exists.
-          for (final item in _masterItems) _NavItem(item.$2, item.$3, active: active == item.$1, locked: true),
+          // Locked while Master mode is off.
+          for (final item in _masterItems)
+            _NavItem(item.$2, item.$3, active: active == item.$1, locked: !session.masterMode),
         ],
       ),
     );

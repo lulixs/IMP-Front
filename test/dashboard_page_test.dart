@@ -5,6 +5,7 @@ import 'package:http/testing.dart';
 import 'package:imp_app/api/api_client.dart';
 import 'package:imp_app/screens/dashboard/category_card.dart';
 import 'package:imp_app/screens/dashboard/dashboard_page.dart';
+import 'package:imp_app/session.dart';
 import 'package:imp_app/theme.dart';
 
 // One category, in the shape from IMP-Back's docs/api/dashboard.md.
@@ -40,7 +41,10 @@ void main() {
           ).copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
         ),
-        home: DashboardPage(api: ApiClient(client: client)),
+        home: DashboardPage(
+          api: ApiClient(client: client),
+          session: Session(employeeName: 'Dan Finkle'),
+        ),
       ),
     );
   }

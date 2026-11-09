@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
 import '../../models/dashboard.dart';
+import '../../session.dart';
 import '../../theme.dart';
 import '../../widgets/app_shell.dart';
 import '../../widgets/common.dart';
@@ -12,7 +13,10 @@ import 'dashboard_view.dart';
 class DashboardPage extends StatefulWidget {
   final ApiClient? api;
 
-  const DashboardPage({super.key, this.api});
+  /// The current sign-in, passed on to the AppShell.
+  final Session session;
+
+  const DashboardPage({super.key, this.api, required this.session});
 
   // Creates State object that holds the page's changing widgets
   @override
@@ -53,6 +57,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return AppShell(
+      session: widget.session,
       active: Section.dashboard,
       child: FutureBuilder<DashboardData>(
         future: _dashboard,
