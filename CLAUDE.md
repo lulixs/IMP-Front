@@ -15,7 +15,7 @@ The README covers setup, run commands, checks, and the project layout:
 - Two-space indentation, and lines up to about 120 characters. **Don't run `dart format` over `lib/` or `test/`.** It rewraps every file to 80 columns and buries real changes in the diff. Match the surrounding style by hand.
 - `prototype/` is the old click-through app. Use its `lib/theme.dart` and `lib/widgets/common.dart` as the guide for look and layout, but don't copy features from it in bulk. Build only what the current task needs.
 - API response shapes are defined in IMP-Back's `docs/api/` (for example `docs/api/dashboard.md`). Models in `lib/models/` follow those files. If a shape needs to change, change the contract first.
-- Calls to the backend go through `lib/api/` (`ApiClient`, which throws `ApiException`). The backend address and timeout are in `lib/config.dart`.
+- Calls to the backend go through `lib/api/` (`ApiClient`, which throws `ApiException`). The backend address and timeout are in `lib/config.dart`. The address is chosen when the app is started, with `--dart-define=API_BASE_URL=...` (D-158), and defaults to `http://localhost:5000`. Never edit the address in the file to switch servers.
 - Tests that touch the API use a fake server, so `flutter test` doesn't need the backend running.
 - Run `flutter analyze` and `flutter test` before committing. Both should pass cleanly.
 
