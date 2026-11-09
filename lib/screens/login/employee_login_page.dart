@@ -6,10 +6,12 @@ import 'login_layout.dart';
 import 'stub_employees.dart';
 
 /// Screen 2 of sign-in: pick a name, then enter a 6-digit PIN on the keypad (D-014).
-/// The 6th digit signs in. Nothing is checked yet, so any PIN works.
+/// The 6th digit signs in. Whether the PIN is right is up to [onSignIn].
 class EmployeeLoginPage extends StatefulWidget {
-  /// Called with the chosen employee's name once all 6 digits are entered.
-  final ValueChanged<String> onSignIn;
+  /// Called with the chosen employee's name and the PIN once all 6 digits are entered.
+  /// Returns null if sign-in worked, or the message to show in an error box if it failed.
+  /// After a failure the PIN is cleared so it can be entered again.
+  final String? Function(String name, String pin) onSignIn;
 
   const EmployeeLoginPage({super.key, required this.onSignIn});
 
@@ -23,6 +25,9 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   String _name = stubEmployees.first;
   String _pin = '';
 
+  /// Message from the last failed sign-in, or null if there is nothing to show.
+  String? _error;
+
   void _press(String key) {
     setState(() {
       if (key == _Keypad.delete) {
@@ -31,7 +36,14 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
         _pin += key;
       }
     });
-    if (_pin.length == _pinLength) widget.onSignIn(_name);
+    if (_pin.length != _pinLength) return;
+
+    final error = widget.onSignIn(_name, _pin);
+    if (!mounted) return;
+    setState(() {
+      _error = error;
+      if (error != null) _pin = '';
+    });
   }
 
   @override
@@ -42,6 +54,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_error != null) ErrorBox(_error!),
           const FieldLabel('Name'),
           DropdownButtonFormField<String>(
             initialValue: _name,
@@ -51,6 +64,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
             onChanged: (name) => setState(() {
               _name = name!;
               _pin = '';
+              _error = null;
             }),
           ),
           const SizedBox(height: 14),

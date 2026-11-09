@@ -46,7 +46,7 @@ class ImpApp extends StatelessWidget {
 
   Widget _login() {
     return Builder(
-      // Temporary: nothing is checked and the employee is not remembered yet.
+      // Temporary: sign-in uses stand-in checks (see LoginFlow) and the employee is not remembered yet.
       builder: (context) => LoginFlow(onFinished: (employeeName) => _openDashboard(context)),
     );
   }

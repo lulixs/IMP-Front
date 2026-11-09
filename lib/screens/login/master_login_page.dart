@@ -5,9 +5,11 @@ import '../../widgets/common.dart';
 import 'login_layout.dart';
 
 /// Screen 1 of sign-in: the Master account signs the tablet in (D-013).
-/// Nothing is checked against the server yet, so any valid email and any password work.
+/// The page only checks the fields are filled in. Whether the email and password are right is up to [onSignIn].
 class MasterLoginPage extends StatefulWidget {
-  final VoidCallback onSignIn;
+  /// Called with the entered email (trimmed) and password once the fields are valid.
+  /// Returns null if sign-in worked, or the message to show in an error box if it failed.
+  final String? Function(String email, String password) onSignIn;
 
   const MasterLoginPage({super.key, required this.onSignIn});
 
@@ -20,6 +22,9 @@ class _MasterLoginPageState extends State<MasterLoginPage> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
+  /// Message from the last failed sign-in, or null if there is nothing to show.
+  String? _error;
+
   @override
   void dispose() {
     _email.dispose();
@@ -28,9 +33,9 @@ class _MasterLoginPageState extends State<MasterLoginPage> {
   }
 
   void _signIn() {
-    if (_formKey.currentState!.validate()) {
-      widget.onSignIn();
-    }
+    if (!_formKey.currentState!.validate()) return;
+    final error = widget.onSignIn(_email.text.trim(), _password.text);
+    if (mounted) setState(() => _error = error);
   }
 
   @override
@@ -43,6 +48,7 @@ class _MasterLoginPageState extends State<MasterLoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_error != null) ErrorBox(_error!),
             const FieldLabel('Email'),
             TextFormField(
               controller: _email,

@@ -4,6 +4,7 @@ import 'package:imp_app/screens/login/employee_login_page.dart';
 import 'package:imp_app/screens/login/login_flow.dart';
 import 'package:imp_app/screens/login/master_login_page.dart';
 import 'package:imp_app/theme.dart';
+import 'package:imp_app/widgets/common.dart';
 
 void main() {
   final fields = find.byType(TextFormField);
@@ -14,21 +15,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> showFlow(WidgetTester tester, ValueChanged<String> onFinished) {
+  Future<void> showPage(WidgetTester tester, Widget page) {
     tester.view.physicalSize = const Size(1024, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    return tester.pumpWidget(
-      MaterialApp(
-        theme: buildTheme(),
-        home: LoginFlow(onFinished: onFinished),
-      ),
-    );
+    return tester.pumpWidget(MaterialApp(theme: buildTheme(), home: page));
   }
 
-  Future<void> signInMaster(WidgetTester tester) async {
+  Future<void> showFlow(WidgetTester tester, ValueChanged<String> onFinished) {
+    return showPage(tester, LoginFlow(onFinished: onFinished));
+  }
+
+  Future<void> signInMaster(WidgetTester tester, {String password = 'x'}) async {
     await tester.enterText(fields.at(0), 'store@example.org');
-    await tester.enterText(fields.at(1), 'x');
+    await tester.enterText(fields.at(1), password);
     await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
   }
 
@@ -59,7 +59,7 @@ void main() {
     expect(find.byType(EmployeeLoginPage), findsNothing);
   });
 
-  testWidgets('Any valid email and password, then any 6-digit PIN, signs in Dan Finkle', (tester) async {
+  testWidgets('A valid email and password, then a 6-digit PIN, signs in Dan Finkle', (tester) async {
     String? signedIn;
     await showFlow(tester, (name) => signedIn = name);
 
@@ -96,5 +96,102 @@ void main() {
 
     expect(find.byType(MasterLoginPage), findsOneWidget);
     expect(find.text('store@example.org'), findsOneWidget);
+  });
+
+  testWidgets('No error box shows before a failed sign-in', (tester) async {
+    await showFlow(tester, (_) {});
+    expect(find.byType(ErrorBox), findsNothing);
+
+    await signInMaster(tester);
+    expect(find.byType(ErrorBox), findsNothing);
+  });
+
+  testWidgets('The password "wrong" shows the error box and stays on the Master screen', (tester) async {
+    await showFlow(tester, (_) {});
+
+    await signInMaster(tester, password: LoginFlow.wrongPassword);
+
+    expect(find.byType(ErrorBox), findsOneWidget);
+    expect(find.text('Incorrect email or password. Try again.'), findsOneWidget);
+    expect(find.byType(EmployeeLoginPage), findsNothing);
+
+    // A different password gets through, and the error is gone when Back returns here.
+    await signInMaster(tester);
+    expect(find.byType(EmployeeLoginPage), findsOneWidget);
+    await tap(tester, find.text('Back'));
+    expect(find.byType(ErrorBox), findsNothing);
+  });
+
+  testWidgets('The PIN 000000 shows the error box and clears the PIN for another try', (tester) async {
+    String? signedIn;
+    await showFlow(tester, (name) => signedIn = name);
+    await signInMaster(tester);
+
+    await enterPin(tester, LoginFlow.wrongPin);
+
+    expect(signedIn, isNull);
+    expect(find.byType(ErrorBox), findsOneWidget);
+    expect(find.text('Incorrect PIN for Dan Finkle. Try again.'), findsOneWidget);
+
+    // The PIN starts over, so it takes 6 new digits to sign in.
+    await enterPin(tester, '12345');
+    expect(signedIn, isNull, reason: 'only 5 digits since the PIN was cleared');
+    await enterPin(tester, '6');
+    expect(signedIn, 'Dan Finkle');
+  });
+
+  testWidgets('The Master screen passes the trimmed email and the password, and shows the message it gets back',
+      (tester) async {
+    final calls = <(String, String)>[];
+    await showPage(
+      tester,
+      MasterLoginPage(onSignIn: (email, password) {
+        calls.add((email, password));
+        return 'Server says no';
+      }),
+    );
+
+    await tester.enterText(fields.at(0), '  store@example.org  ');
+    await tester.enterText(fields.at(1), ' secret ');
+    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
+
+    expect(calls, [('store@example.org', ' secret ')]);
+    expect(find.widgetWithText(ErrorBox, 'Server says no'), findsOneWidget);
+  });
+
+  testWidgets('The Master screen does not call sign-in while a field is invalid', (tester) async {
+    var calls = 0;
+    await showPage(tester, MasterLoginPage(onSignIn: (_, _) {
+      calls++;
+      return null;
+    }));
+
+    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
+
+    expect(calls, 0);
+    expect(find.byType(ErrorBox), findsNothing);
+  });
+
+  testWidgets('The employee screen passes the name and PIN, and shows the message it gets back', (tester) async {
+    final calls = <(String, String)>[];
+    await showPage(
+      tester,
+      EmployeeLoginPage(onSignIn: (name, pin) {
+        calls.add((name, pin));
+        return 'Server says no';
+      }),
+    );
+
+    await enterPin(tester, '246810');
+
+    expect(calls, [('Dan Finkle', '246810')]);
+    expect(find.widgetWithText(ErrorBox, 'Server says no'), findsOneWidget);
+  });
+
+  testWidgets('ErrorBox shows its message next to an error icon', (tester) async {
+    await showPage(tester, const Scaffold(body: ErrorBox('Something went wrong')));
+
+    expect(find.text('Something went wrong'), findsOneWidget);
+    expect(find.descendant(of: find.byType(ErrorBox), matching: find.byIcon(Icons.error_outline)), findsOneWidget);
   });
 }

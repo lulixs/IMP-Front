@@ -73,6 +73,34 @@ class NoteBox extends StatelessWidget {
   }
 }
 
+/// Bordered box with an error icon and a bold message, shown at the top of a form when
+/// something goes wrong, like a wrong password or PIN.
+class ErrorBox extends StatelessWidget {
+  final String message;
+  const ErrorBox(this.message, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.ink, width: 2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 20, color: AppColors.ink),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+  }
+}
+
 /// Full-width black pill button, like "Next" on the setup screens.
 class PrimaryButton extends StatelessWidget {
   final String label;
