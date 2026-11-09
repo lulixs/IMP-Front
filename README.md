@@ -26,6 +26,74 @@ flutter run -d chrome -t lib/dev_login.dart        # skips setup and opens sign-
 
 While the app is running, press `r` to reload your changes, `R` to restart, and `q` to quit.
 
+## Android emulator
+
+The team tests on a tablet-sized emulator called `IMP_Tablet` (D-161). A virtual device can't be copied between computers, so everyone makes their own with the steps below.
+
+### Making the emulator (once per computer)
+
+1. Make sure Android Studio and the Android SDK are installed and `flutter doctor` shows no Android problems. In Android Studio, open the SDK Manager, go to SDK Tools, and check "Android SDK Command-line Tools (latest)". Then put the tools on your PATH (see the notes for your system below) and check with `avdmanager list avd`.
+2. Download the system image:
+   ```
+   sdkmanager "system-images;android-37.0;google_apis_playstore;x86_64"
+   ```
+3. Create the device:
+   ```
+   avdmanager create avd -n IMP_Tablet -d medium_tablet -k "system-images;android-37.0;google_apis_playstore;x86_64"
+   ```
+4. Open `IMP_Tablet.avd/config.ini` in your `.android/avd` folder and set these lines (they already exist, only the values change):
+   ```
+   hw.lcd.width=1200
+   hw.lcd.height=1920
+   hw.lcd.density=240
+   hw.keyboard=yes
+   hw.gpu.enabled=yes
+   ```
+   If the emulator feels slow, also set `hw.ramSize=4096`.
+
+**Linux:** the SDK is usually at `~/Android/Sdk`. Add these to `~/.bashrc`:
+```
+export ANDROID_HOME="$HOME/Android/Sdk"
+export ANDROID_USER_HOME="$HOME/.android"
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
+```
+`ANDROID_USER_HOME` matters when `XDG_CONFIG_HOME` is set (some desktops set it). Without it, `avdmanager` looks for devices in `~/.config/.android` while the emulator uses `~/.android`, and each can't see the other's devices.
+
+**Windows:** the SDK is usually at `%LOCALAPPDATA%\Android\Sdk`, and the devices are in `%USERPROFILE%\.android\avd`. Add `cmdline-tools\latest\bin`, `emulator`, and `platform-tools` from the SDK folder to your Path. The tools are `avdmanager.bat` and `sdkmanager.bat`, but `avdmanager` and `sdkmanager` work too. The emulator needs a hypervisor: turn on "Windows Hypervisor Platform" in "Turn Windows features on or off", then restart.
+
+**Mac with Apple silicon (M1 and later):** use `arm64-v8a` instead of `x86_64` in steps 2 and 3. The SDK is usually at `~/Library/Android/sdk`, and the devices are in `~/.android/avd`.
+
+### Running everything (every time)
+
+You need two terminals. The commands assume IMP-Back and IMP-Front are cloned into the same folder. On Windows or Mac, open Docker Desktop first.
+
+**Terminal 1, the database and the API** (from the IMP-Back folder):
+```
+cd db
+docker compose up -d
+docker compose ps                  # wait until imp-mysql shows (healthy)
+cd ..
+dotnet run --project Imp.Api       # wait for: Now listening on: http://localhost:5000
+```
+Check it in a browser on your computer: http://localhost:5000/api/health/database should show `{"database":"ok"}`. Leave this terminal running.
+
+**Terminal 2, the emulator and the app** (from the IMP-Front folder):
+```
+flutter emulators --launch IMP_Tablet      # wait for the tablet's home screen
+adb devices                                # should show: emulator-5554   device
+flutter pub get                            # only needed after pulling changes
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:5000
+```
+To skip setup and open the dashboard, add `-t lib/dev_dashboard.dart`. Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which only works in Chrome.
+
+**When you're done:** press `q` in terminal 2, `Ctrl+C` in terminal 1, and close the emulator window. To stop the database too, run `docker compose stop` in IMP-Back's `db` folder (your data is kept).
+
+The first Android build takes several minutes. Check the emulator's name with `adb devices` if it isn't `emulator-5554`.
+
+If the dashboard can't connect, check that the API is running and that the flag is in the command. If the emulator freezes or acts strangely, start it with `emulator -avd IMP_Tablet -no-snapshot-load` for a clean boot, or add `-wipe-data` to reset it.
+
+To test on a real Android phone plugged in by USB, run `adb reverse tcp:5000 tcp:5000` once the phone shows in `adb devices`, then run the app without the flag. The phone's `localhost:5000` then leads to your computer.
+
 ## Checks
 
 Run both before committing:
