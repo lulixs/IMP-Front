@@ -2,7 +2,7 @@
 
 The tablet app for IMP (Inventory Management Platform), built with Flutter. It talks to the backend in [IMP-Back](https://github.com/lulixs/IMP-Back).
 
-**Status:** first-time setup, sign-in, and the dashboard are built. Sign-in accepts any valid email, any password, and any PIN, and lists one stub employee, Dan Finkle. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar and bottom bar are in place but their buttons don't do anything yet. Nothing is saved to the backend yet.
+**Status:** first-time setup, sign-in, and the dashboard are built. Sign-in accepts any valid email, any password, and any PIN, and lists one stub employee, Dan Finkle. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar and bottom bar are in place but their buttons don't do anything yet. Nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
 
 ## Setup (once per computer)
 
