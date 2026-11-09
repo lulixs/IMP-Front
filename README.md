@@ -84,7 +84,7 @@ adb devices                                # should show: emulator-5554   device
 flutter pub get                            # only needed after pulling changes
 flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:5000
 ```
-To skip setup and open the dashboard, add `-t lib/dev_dashboard.dart`. Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which only works in Chrome.
+To skip setup and open the dashboard, add `-t lib/dev_dashboard.dart`. Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which works in Chrome, and on a USB phone after `adb reverse` (below).
 
 **When you're done:** press `q` in terminal 2, `Ctrl+C` in terminal 1, and close the emulator window. To stop the database too, run `docker compose stop` in IMP-Back's `db` folder (your data is kept).
 
