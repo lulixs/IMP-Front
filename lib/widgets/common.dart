@@ -101,16 +101,17 @@ class ErrorBox extends StatelessWidget {
   }
 }
 
-/// Full-width black pill button, like "Next" on the setup screens.
+/// Black pill button, like "Next" on the setup screens. Full width unless [expand] is false.
 class PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
-  const PrimaryButton(this.label, {super.key, this.onPressed});
+  final bool expand;
+  const PrimaryButton(this.label, {super.key, this.onPressed, this.expand = true});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
+      width: expand ? double.infinity : null,
       height: 46,
       child: FilledButton(
         onPressed: onPressed,
@@ -125,16 +126,17 @@ class PrimaryButton extends StatelessWidget {
   }
 }
 
-/// Full-width outlined pill button, like "Back" on the setup screens.
+/// Outlined pill button, like "Back" on the setup screens. Full width unless [expand] is false.
 class SecondaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
-  const SecondaryButton(this.label, {super.key, this.onPressed});
+  final bool expand;
+  const SecondaryButton(this.label, {super.key, this.onPressed, this.expand = true});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
+      width: expand ? double.infinity : null,
       height: 46,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -148,4 +150,74 @@ class SecondaryButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Gray circle with the first letter of a name, shown next to an employee's name.
+class Avatar extends StatelessWidget {
+  final String name;
+  final double size;
+  const Avatar(this.name, {super.key, this.size = 38});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFFE3E3E3),
+        border: Border.all(color: const Color(0xFFB9B9B9)),
+      ),
+      child: Text(
+        name.isEmpty ? '' : name.characters.first.toUpperCase(),
+        style: TextStyle(fontSize: size * 0.42, fontWeight: FontWeight.w700, color: const Color(0xFF7A7A7A)),
+      ),
+    );
+  }
+}
+
+/// Popup that asks the user to confirm something, with Cancel and a black confirm button.
+/// Returns true only if the confirm button was tapped. Cancel, tapping outside, and the
+/// back button all return false.
+Future<bool> showConfirmPopup(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierColor: const Color(0x6B1E1E1E),
+    builder: (context) => Dialog(
+      backgroundColor: AppColors.card,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 470),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(26, 24, 26, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 14),
+              Text(message, style: const TextStyle(fontSize: 14, height: 1.5)),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SecondaryButton('Cancel', expand: false, onPressed: () => Navigator.of(context).pop(false)),
+                  const SizedBox(width: 10),
+                  PrimaryButton(confirmLabel, expand: false, onPressed: () => Navigator.of(context).pop(true)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  return confirmed ?? false;
 }

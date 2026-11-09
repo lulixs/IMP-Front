@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'api/api_client.dart';
 import 'screens/dashboard/dashboard_page.dart';
+import 'screens/login/employee_login_page.dart';
 import 'screens/login/login_flow.dart';
 import 'screens/login/stub_employees.dart';
 import 'screens/setup/first_setup_flow.dart';
 import 'session.dart';
 import 'theme.dart';
+import 'widgets/app_shell.dart';
 
 void main() => runApp(const ImpApp());
 
@@ -27,6 +29,7 @@ class ImpApp extends StatelessWidget {
       title: 'IMP',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      routes: {AppShell.switchUserRoute: _switchUser},
       home: switch (start) {
         StartScreen.setup => _setup(),
         StartScreen.login => _login(),
@@ -53,6 +56,19 @@ class ImpApp extends StatelessWidget {
       builder: (context) => LoginFlow(
         onFinished: (employeeName) => _openDashboard(context, Session(employeeName: employeeName)),
       ),
+    );
+  }
+
+  /// Where Switch user lands: the PIN screen on its own. The tablet stays signed in to the
+  /// Master account, so only the employee signs in again, and that makes a new Session.
+  Widget _switchUser(BuildContext context) {
+    return EmployeeLoginPage(
+      showBack: false,
+      onSignIn: (name, pin) {
+        final error = LoginFlow.checkPin(name, pin);
+        if (error == null) _openDashboard(context, Session(employeeName: name));
+        return error;
+      },
     );
   }
 

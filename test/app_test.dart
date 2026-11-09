@@ -5,6 +5,8 @@ import 'package:http/testing.dart';
 import 'package:imp_app/api/api_client.dart';
 import 'package:imp_app/main.dart';
 import 'package:imp_app/screens/dashboard/dashboard_page.dart';
+import 'package:imp_app/screens/login/employee_login_page.dart';
+import 'package:imp_app/screens/login/login_flow.dart';
 import 'package:imp_app/screens/setup/first_setup_flow.dart';
 
 void main() {
@@ -74,5 +76,49 @@ void main() {
         reason: 'the employee who entered their PIN');
     final navigator = tester.state<NavigatorState>(find.byType(Navigator));
     expect(navigator.canPop(), isFalse);
+  });
+
+  testWidgets('Switch user throws the session away, and the next PIN sign-in starts a new one', (tester) async {
+    tester.view.physicalSize = const Size(1024, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ImpApp(start: StartScreen.login, api: api));
+    await tester.enterText(fields.at(0), 'store@example.org');
+    await tester.enterText(fields.at(1), 'x');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+    for (final digit in '123456'.split('')) {
+      await tapButton(tester, digit);
+    }
+    final firstSession = tester.widget<DashboardPage>(find.byType(DashboardPage)).session;
+
+    // Turn Master mode on, then switch user.
+    await tapButton(tester, 'Master off');
+    await tapButton(tester, 'Turn on');
+    expect(firstSession.masterMode, isTrue);
+    await tapButton(tester, 'Switch user');
+
+    // Straight to the PIN screen, with nothing behind it and no Back button.
+    expect(find.byType(EmployeeLoginPage), findsOneWidget);
+    expect(find.byType(DashboardPage, skipOffstage: false), findsNothing);
+    expect(find.text('Back'), findsNothing);
+    expect(tester.state<NavigatorState>(find.byType(Navigator)).canPop(), isFalse);
+
+    // A wrong PIN still shows the error here.
+    for (final digit in LoginFlow.wrongPin.split('')) {
+      await tapButton(tester, digit);
+    }
+    expect(find.text('Incorrect PIN for Dan Finkle. Try again.'), findsOneWidget);
+
+    // The right PIN opens the dashboard with a brand new session, so Master mode is off again.
+    for (final digit in '123456'.split('')) {
+      await tapButton(tester, digit);
+    }
+    final secondSession = tester.widget<DashboardPage>(find.byType(DashboardPage)).session;
+    expect(secondSession, isNot(same(firstSession)));
+    expect(secondSession.employeeName, 'Dan Finkle');
+    expect(secondSession.masterMode, isFalse);
+    expect(find.text('Master off'), findsOneWidget);
+    expect(tester.state<NavigatorState>(find.byType(Navigator)).canPop(), isFalse);
   });
 }

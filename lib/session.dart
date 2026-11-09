@@ -9,7 +9,7 @@ class Session extends ChangeNotifier {
 
   bool _masterMode;
 
-  Session({required this.employeeName, bool masterMode = false}) : _masterMode = masterMode;
+  Session({required this.employeeName, this._masterMode = false});
 
   /// Whether Master mode is on. The Master-only pages are locked while it is off.
   bool get masterMode => _masterMode;

@@ -13,7 +13,11 @@ class EmployeeLoginPage extends StatefulWidget {
   /// After a failure the PIN is cleared so it can be entered again.
   final String? Function(String name, String pin) onSignIn;
 
-  const EmployeeLoginPage({super.key, required this.onSignIn});
+  /// Whether to show Back, which returns to the Master sign-in screen. Switch user hides it,
+  /// since the tablet stays signed in to the Master account and there is nothing to go back to.
+  final bool showBack;
+
+  const EmployeeLoginPage({super.key, required this.onSignIn, this.showBack = true});
 
   @override
   State<EmployeeLoginPage> createState() => _EmployeeLoginPageState();
@@ -87,8 +91,10 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
           ),
           const SizedBox(height: 12),
           _Keypad(onPress: _press),
-          const SizedBox(height: 20),
-          SecondaryButton('Back', onPressed: () => Navigator.of(context).pop()),
+          if (widget.showBack) ...[
+            const SizedBox(height: 20),
+            SecondaryButton('Back', onPressed: () => Navigator.of(context).pop()),
+          ],
         ],
       ),
     );

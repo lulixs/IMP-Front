@@ -24,14 +24,27 @@ class LoginFlow extends StatelessWidget {
     return MasterLoginPage(onSignIn: (email, password) => _masterSignIn(context, email, password));
   }
 
+  /// Stand-in for the backend's Master account check. Returns the error to show, or null if it passes.
+  static String? checkMaster(String email, String password) {
+    return password == wrongPassword ? 'Incorrect email or password. Try again.' : null;
+  }
+
+  /// Stand-in for the backend's PIN check. Returns the error to show, or null if it passes.
+  /// Switch user uses it too.
+  static String? checkPin(String name, String pin) {
+    return pin == wrongPin ? 'Incorrect PIN for $name. Try again.' : null;
+  }
+
   String? _masterSignIn(BuildContext context, String email, String password) {
-    if (password == wrongPassword) return 'Incorrect email or password. Try again.';
+    final error = checkMaster(email, password);
+    if (error != null) return error;
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeeLoginPage(onSignIn: _employeeSignIn)));
     return null;
   }
 
   String? _employeeSignIn(String name, String pin) {
-    if (pin == wrongPin) return 'Incorrect PIN for $name. Try again.';
+    final error = checkPin(name, pin);
+    if (error != null) return error;
     onFinished(name);
     return null;
   }
