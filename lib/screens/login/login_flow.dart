@@ -21,7 +21,10 @@ class LoginFlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MasterLoginPage(onSignIn: (email, password) => _masterSignIn(context, email, password));
+    return MasterLoginPage(
+      mode: MasterLoginMode.signIn,
+      onSignIn: (email, password, _) => _masterSignIn(context, email, password),
+    );
   }
 
   /// Stand-in for the backend's Master account check. Returns the error to show, or null if it passes.

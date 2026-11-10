@@ -9,3 +9,16 @@ String? validateEmail(String? value) {
   if (!_emailPattern.hasMatch(email)) return 'Enter a valid email';
   return null;
 }
+
+/// Longest tablet name allowed. Matches DEVICE.device_name, VARCHAR(100) in the ERD.
+const maxTabletNameLength = 100;
+
+/// Form validator for tablet name fields, used in first-time setup and when adding a tablet.
+/// Returns the error to show, or null if the name is valid. Any characters are allowed,
+/// but the name can't be blank or longer than [maxTabletNameLength] once trimmed.
+String? validateTabletName(String? value) {
+  final name = value?.trim() ?? '';
+  if (name.isEmpty) return 'Enter a tablet name';
+  if (name.length > maxTabletNameLength) return 'Use $maxTabletNameLength characters or fewer';
+  return null;
+}

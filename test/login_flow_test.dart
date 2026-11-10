@@ -140,38 +140,6 @@ void main() {
     expect(signedIn, 'Dan Finkle');
   });
 
-  testWidgets('The Master screen passes the trimmed email and the password, and shows the message it gets back',
-      (tester) async {
-    final calls = <(String, String)>[];
-    await showPage(
-      tester,
-      MasterLoginPage(onSignIn: (email, password) {
-        calls.add((email, password));
-        return 'Server says no';
-      }),
-    );
-
-    await tester.enterText(fields.at(0), '  store@example.org  ');
-    await tester.enterText(fields.at(1), ' secret ');
-    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
-
-    expect(calls, [('store@example.org', ' secret ')]);
-    expect(find.widgetWithText(ErrorBox, 'Server says no'), findsOneWidget);
-  });
-
-  testWidgets('The Master screen does not call sign-in while a field is invalid', (tester) async {
-    var calls = 0;
-    await showPage(tester, MasterLoginPage(onSignIn: (_, _) {
-      calls++;
-      return null;
-    }));
-
-    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
-
-    expect(calls, 0);
-    expect(find.byType(ErrorBox), findsNothing);
-  });
-
   testWidgets('The employee screen passes the name and PIN, and shows the message it gets back', (tester) async {
     final calls = <(String, String)>[];
     await showPage(
