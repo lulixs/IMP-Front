@@ -1,11 +1,17 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:imp_app/api/api_client.dart';
+import 'package:imp_app/api/api_exception.dart';
+import 'package:imp_app/api/token_store.dart';
 
 void main() {
+  // ApiClient reads tokens from locked storage, which tests don't have. This swaps in an empty stand-in.
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
   test('Each verb sends its own method', () async {
     // The fake server writes down the method of every request it gets.
     final methods = <String>[];
@@ -82,5 +88,93 @@ void main() {
     final result = await api.get('/api/categories/7', screen: 'Test');
 
     expect(result, {'id': 7, 'name': 'Coats'});
+  });
+
+  test('An error reply uses the server sentence and keeps its code', () async {
+    final api = ApiClient(
+      client: MockClient(
+        (request) async => http.Response(
+          '{"error":"You\'ve been signed out. Sign in again.","code":"sessionEnded"}',
+          401,
+        ),
+      ),
+    );
+
+    try {
+      await api.get('/api/dashboard', screen: 'Test');
+      fail('Expected an ApiException');
+    } on ApiException catch (e) {
+      expect(e.message, "You've been signed out. Sign in again.");
+      expect(e.code, 'sessionEnded');
+      expect(e.statusCode, 401);
+    }
+  });
+
+  test('An error reply with no body falls back to ApiClient\'s own sentence', () async {
+    final api = ApiClient(
+      client: MockClient((request) async => http.Response('', 500)),
+    );
+
+    try {
+      await api.get('/api/dashboard', screen: 'Test');
+      fail('Expected an ApiException');
+    } on ApiException catch (e) {
+      expect(e.message, 'There is an issue with the server (error 500).');
+      expect(e.code, isNull);
+    }
+  });
+
+  group('Token header', () {
+    // The tablet has both tokens saved, so each test shows which one gets picked.
+    late http.Request sent;
+    late ApiClient api;
+
+    setUp(() {
+      FlutterSecureStorage.setMockInitialValues({'deviceToken': 'device-abc', 'sessionToken': 'session-xyz'});
+      api = ApiClient(
+        client: MockClient((request) async {
+          sent = request;
+          return http.Response('{}', 200);
+        }),
+        tokens: TokenStore(),
+      );
+    });
+
+    test('Sends the session token by default', () async {
+      await api.get('/api/dashboard', screen: 'Test');
+
+      expect(sent.headers['authorization'], 'Bearer session-xyz');
+    });
+
+    test('Sends the device token when asked', () async {
+      await api.post(
+        '/api/sessions',
+        screen: 'Test',
+        body: {'employeeId': 1, 'pin': '111111'},
+        token: TokenType.device,
+      );
+
+      expect(sent.headers['authorization'], 'Bearer device-abc');
+    });
+
+    test('Sends no token when the endpoint needs none', () async {
+      await api.get('/api/setup/status', screen: 'Test', token: TokenType.none);
+
+      expect(sent.headers['authorization'], isNull);
+    });
+  });
+
+  test('Sends no Authorization header when the tablet has no token yet', () async {
+    late http.Request sent;
+    final api = ApiClient(
+      client: MockClient((request) async {
+        sent = request;
+        return http.Response('{}', 200);
+      }),
+    );
+
+    await api.get('/api/dashboard', screen: 'Test');
+
+    expect(sent.headers['authorization'], isNull);
   });
 }
