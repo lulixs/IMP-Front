@@ -2,7 +2,7 @@
 
 The tablet app for IMP (Inventory Management Platform), built with Flutter. It talks to the backend in [IMP-Back](https://github.com/lulixs/IMP-Back).
 
-**Status:** first-time setup, sign-in, and the dashboard are built. Sign-in accepts any valid email, any password, and any PIN, and lists one stub employee, Dan Finkle. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar and bottom bar are in place but their buttons don't do anything yet. Nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
+**Status:** first-time setup, sign-in, and the dashboard are built. Sign-in accepts any valid email, any password, and any PIN, and lists one stub employee, Dan Finkle. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar and bottom bar are in place but their buttons don't do anything yet. `ApiClient` can send GET, POST, PUT, and DELETE, shows the server's error sentence, and sends a saved sign-in token (kept in `TokenStore` with `flutter_secure_storage`), but nothing signs in or saves a token yet. Nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
 
 ## Setup (once per computer)
 
@@ -112,7 +112,7 @@ lib/
 ├── dev_login.dart         starts the app on sign-in (debugging only)
 ├── theme.dart             colors and text field style
 ├── validators.dart        form checks shared by more than one screen, like the email check
-├── api/                   ApiClient and ApiException, for talking to the backend
+├── api/                   ApiClient, ApiException, and TokenStore, for talking to the backend
 ├── config.dart            the backend's address and request timeout
 ├── models/                data classes for API responses, with fromJson
 ├── screens/
