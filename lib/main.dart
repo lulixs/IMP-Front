@@ -64,9 +64,9 @@ class ImpApp extends StatelessWidget {
   Widget _switchUser(BuildContext context) {
     return EmployeeLoginPage(
       showBack: false,
-      onSignIn: (name, pin) {
-        final error = LoginFlow.checkPin(name, pin);
-        if (error == null) _openDashboard(context, Session(employeeName: name));
+      onSignIn: (name, pin) async {
+        final error = await LoginFlow.checkPin(name, pin);
+        if (error == null && context.mounted) _openDashboard(context, Session(employeeName: name));
         return error;
       },
     );

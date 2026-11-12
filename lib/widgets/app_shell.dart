@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../screens/login/login_flow.dart';
+import '../screens/login/master_login_page.dart';
 import '../session.dart';
 import '../theme.dart';
 import 'common.dart';
@@ -26,8 +28,10 @@ const _masterItems = [
 /// moves into a drawer opened from the top bar.
 ///
 /// The card at the bottom of the sidebar shows who is signed in. Its Master tag turns
-/// Master mode on or off after a popup, and Switch user goes back to the PIN screen.
-/// The sidebar items and bottom buttons don't do anything yet.
+/// Master mode on after a popup and a Master sign-in, or off after just the popup, and
+/// Switch user goes back to the PIN screen. While Master mode is off, tapping a locked
+/// Master-only item opens the same popup. The other sidebar items and the bottom buttons
+/// don't do anything yet.
 class AppShell extends StatelessWidget {
   /// The route Switch user opens: the employee PIN screen with nothing behind it.
   /// ImpApp registers it, since it knows how to open the dashboard after the next sign-in.
@@ -97,7 +101,7 @@ class _Sidebar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 18, 10, 10),
       child: Column(
         children: [
-          Expanded(child: _navList()),
+          Expanded(child: _navList(context)),
           const SizedBox(height: 8),
           _UserCard(
             session: session,
@@ -109,7 +113,7 @@ class _Sidebar extends StatelessWidget {
     );
   }
 
-  Widget _navList() {
+  Widget _navList(BuildContext context) {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -123,25 +127,55 @@ class _Sidebar extends StatelessWidget {
             style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.ink2),
           ),
         ),
-        // Locked while Master mode is off.
+        // Locked while Master mode is off. Tapping a locked one offers to turn Master mode on (D-094).
         for (final item in _masterItems)
-          _NavItem(item.$2, item.$3, active: active == item.$1, locked: !session.masterMode),
+          _NavItem(
+            item.$2,
+            item.$3,
+            active: active == item.$1,
+            locked: !session.masterMode,
+            onTap: session.masterMode ? null : () => _toggleMasterMode(context),
+          ),
       ],
     );
   }
 
-  /// Asks first, then turns Master mode the other way. Cancel leaves it as it was.
+  /// Asks first, then turns Master mode the other way. Turning it on also needs the Master
+  /// account to sign in (D-094). Turning it off only logs out of Master mode, so it ends as
+  /// soon as the popup is confirmed. Cancel at any step leaves it as it was.
   Future<void> _toggleMasterMode(BuildContext context) async {
     final turnOn = !session.masterMode;
     final confirmed = await showConfirmPopup(
       context,
       title: turnOn ? 'Turn on Master mode?' : 'Turn off Master mode?',
       message: turnOn
-          ? 'Master mode unlocks Accounts, Buildings, Devices, Deleted Items, and the Audit Log on this tablet.'
+          ? 'Master mode unlocks Accounts, Buildings, Devices, Deleted Items, and the Audit Log on this tablet. '
+              'You will sign in with the Master account next.'
           : 'Master-only pages lock again on this tablet.',
       confirmLabel: turnOn ? 'Turn on' : 'Turn off',
     );
-    if (confirmed) session.masterMode = turnOn;
+    if (!confirmed) return;
+    if (!turnOn) {
+      session.masterMode = false;
+      return;
+    }
+    if (!context.mounted) return;
+
+    // The sign-in screen closes itself with true once the Master account signs in.
+    // Cancel or the back button close it with null.
+    final signedIn = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (pageContext) => MasterLoginPage(
+          mode: MasterLoginMode.masterToggle,
+          onSignIn: (email, password, _) async {
+            final error = await LoginFlow.checkMaster(email, password);
+            if (error == null && pageContext.mounted) Navigator.of(pageContext).pop(true);
+            return error;
+          },
+        ),
+      ),
+    );
+    if (signedIn ?? false) session.masterMode = true;
   }
 
   /// Signs the employee out: every page is closed, which throws away this Session, and the
@@ -237,7 +271,11 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final bool active;
   final bool locked;
-  const _NavItem(this.label, this.icon, {required this.active, this.locked = false});
+
+  /// Makes the item a button. Null for items that don't do anything yet.
+  final VoidCallback? onTap;
+
+  const _NavItem(this.label, this.icon, {required this.active, this.locked = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -250,23 +288,31 @@ class _NavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: active ? AppColors.ink : AppColors.line),
         ),
-        child: SizedBox(
-          height: 42,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, color: color, fontWeight: active ? FontWeight.w700 : FontWeight.w400),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: SizedBox(
+            height: 42,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9),
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: color,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
                   ),
-                ),
-                if (locked) Icon(Icons.lock_outline, size: 13, color: color),
-              ],
+                  if (locked) Icon(Icons.lock_outline, size: 13, color: color),
+                ],
+              ),
             ),
           ),
         ),

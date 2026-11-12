@@ -166,18 +166,19 @@ class Avatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFFE3E3E3),
-        border: Border.all(color: const Color(0xFFB9B9B9)),
+        color: AppColors.avatar,
+        border: Border.all(color: AppColors.avatarBorder),
       ),
       child: Text(
         name.isEmpty ? '' : name.characters.first.toUpperCase(),
-        style: TextStyle(fontSize: size * 0.42, fontWeight: FontWeight.w700, color: const Color(0xFF7A7A7A)),
+        style: TextStyle(fontSize: size * 0.42, fontWeight: FontWeight.w700, color: AppColors.avatarText),
       ),
     );
   }
 }
 
 /// Popup that asks the user to confirm something, with Cancel and a black confirm button.
+/// Matches the popups in the wireframes: dark 2px border, rounded corners, dimmed screen behind.
 /// Returns true only if the confirm button was tapped. Cancel, tapping outside, and the
 /// back button all return false.
 Future<bool> showConfirmPopup(
@@ -188,11 +189,14 @@ Future<bool> showConfirmPopup(
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    barrierColor: const Color(0x6B1E1E1E),
+    barrierColor: AppColors.overlay,
     builder: (context) => Dialog(
       backgroundColor: AppColors.card,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: AppColors.ink, width: 2),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 470),
         child: Padding(

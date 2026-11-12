@@ -65,7 +65,7 @@ void main() {
 
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'x');
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign In'));
     await tester.pumpAndSettle();
     for (final digit in '123456'.split('')) {
       await tapButton(tester, digit);
@@ -85,16 +85,20 @@ void main() {
     await tester.pumpWidget(ImpApp(start: StartScreen.login, api: api));
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'x');
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign In'));
     await tester.pumpAndSettle();
     for (final digit in '123456'.split('')) {
       await tapButton(tester, digit);
     }
     final firstSession = tester.widget<DashboardPage>(find.byType(DashboardPage)).session;
 
-    // Turn Master mode on, then switch user.
+    // Turn Master mode on, which needs the Master sign-in, then switch user.
     await tapButton(tester, 'Master off');
     await tapButton(tester, 'Turn on');
+    await tester.enterText(fields.at(0), 'store@example.org');
+    await tester.enterText(fields.at(1), 'x');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign In'));
+    await tester.pumpAndSettle();
     expect(firstSession.masterMode, isTrue);
     await tapButton(tester, 'Switch user');
 

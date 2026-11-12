@@ -27,26 +27,29 @@ class LoginFlow extends StatelessWidget {
     );
   }
 
-  /// Stand-in for the backend's Master account check. Returns the error to show, or null if it passes.
-  static String? checkMaster(String email, String password) {
+  /// Stand-in for the backend's Master account check. Completes with the error to show, or null
+  /// if it passes. Turning Master mode on uses it too. It is async because the real
+  /// check will ask the server.
+  static Future<String?> checkMaster(String email, String password) async {
     return password == wrongPassword ? 'Incorrect email or password. Try again.' : null;
   }
 
-  /// Stand-in for the backend's PIN check. Returns the error to show, or null if it passes.
-  /// Switch user uses it too.
-  static String? checkPin(String name, String pin) {
+  /// Stand-in for the backend's PIN check. Completes with the error to show, or null if it passes.
+  /// Switch user uses it too. It is async because the real check will ask the server.
+  static Future<String?> checkPin(String name, String pin) async {
     return pin == wrongPin ? 'Incorrect PIN for $name. Try again.' : null;
   }
 
-  String? _masterSignIn(BuildContext context, String email, String password) {
-    final error = checkMaster(email, password);
+  Future<String?> _masterSignIn(BuildContext context, String email, String password) async {
+    final error = await checkMaster(email, password);
     if (error != null) return error;
+    if (!context.mounted) return null;
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeeLoginPage(onSignIn: _employeeSignIn)));
     return null;
   }
 
-  String? _employeeSignIn(String name, String pin) {
-    final error = checkPin(name, pin);
+  Future<String?> _employeeSignIn(String name, String pin) async {
+    final error = await checkPin(name, pin);
     if (error != null) return error;
     onFinished(name);
     return null;

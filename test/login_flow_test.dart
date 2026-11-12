@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:imp_app/screens/login/employee_login_page.dart';
@@ -29,7 +31,7 @@ void main() {
   Future<void> signInMaster(WidgetTester tester, {String password = 'x'}) async {
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), password);
-    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
+    await tap(tester, find.widgetWithText(FilledButton, 'Sign In'));
   }
 
   Future<void> enterPin(WidgetTester tester, String pin) async {
@@ -41,7 +43,7 @@ void main() {
   testWidgets('Blank email or password stays on the Master screen', (tester) async {
     await showFlow(tester, (_) {});
 
-    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
+    await tap(tester, find.widgetWithText(FilledButton, 'Sign In'));
 
     expect(find.text('Enter an email'), findsOneWidget);
     expect(find.text('Enter a password'), findsOneWidget);
@@ -53,7 +55,7 @@ void main() {
 
     await tester.enterText(fields.at(0), 'manager@example');
     await tester.enterText(fields.at(1), 'x');
-    await tap(tester, find.widgetWithText(FilledButton, 'Sign in'));
+    await tap(tester, find.widgetWithText(FilledButton, 'Sign In'));
 
     expect(find.text('Enter a valid email'), findsOneWidget);
     expect(find.byType(EmployeeLoginPage), findsNothing);
@@ -144,7 +146,7 @@ void main() {
     final calls = <(String, String)>[];
     await showPage(
       tester,
-      EmployeeLoginPage(onSignIn: (name, pin) {
+      EmployeeLoginPage(onSignIn: (name, pin) async {
         calls.add((name, pin));
         return 'Server says no';
       }),
@@ -154,6 +156,67 @@ void main() {
 
     expect(calls, [('Dan Finkle', '246810')]);
     expect(find.widgetWithText(ErrorBox, 'Server says no'), findsOneWidget);
+  });
+
+  group('While the PIN is being checked', () {
+    final keys = find.descendant(of: find.byType(Wrap), matching: find.byType(InkWell));
+    final back = find.widgetWithText(OutlinedButton, 'Back');
+
+    bool keypadEnabled(WidgetTester tester) => tester.widgetList<InkWell>(keys).every((key) => key.onTap != null);
+    bool backEnabled(WidgetTester tester) => tester.widget<OutlinedButton>(back).onPressed != null;
+    bool nameEnabled(WidgetTester tester) =>
+        tester.widget<DropdownButton<String>>(find.byType(DropdownButton<String>)).onChanged != null;
+
+    /// Shows the PIN screen with a check that only finishes when the test completes [reply].
+    Future<List<String>> showWaitingPage(WidgetTester tester, Completer<String?> reply) async {
+      final pins = <String>[];
+      await showPage(
+        tester,
+        EmployeeLoginPage(onSignIn: (_, pin) {
+          pins.add(pin);
+          return reply.future;
+        }),
+      );
+      return pins;
+    }
+
+    testWidgets('the keypad, the name, and Back are disabled', (tester) async {
+      final reply = Completer<String?>();
+      await showWaitingPage(tester, reply);
+      expect(keypadEnabled(tester), isTrue);
+      expect(backEnabled(tester), isTrue);
+      expect(nameEnabled(tester), isTrue);
+
+      await enterPin(tester, '123456');
+
+      expect(keypadEnabled(tester), isFalse);
+      expect(backEnabled(tester), isFalse);
+      expect(nameEnabled(tester), isFalse);
+
+      // Everything comes back once the answer arrives.
+      reply.complete('Server says no');
+      await tester.pumpAndSettle();
+      expect(keypadEnabled(tester), isTrue);
+      expect(backEnabled(tester), isTrue);
+      expect(nameEnabled(tester), isTrue);
+    });
+
+    testWidgets('mashing the keypad sends nothing more', (tester) async {
+      final reply = Completer<String?>();
+      final pins = await showWaitingPage(tester, reply);
+
+      await enterPin(tester, '123456');
+      await enterPin(tester, '789012');
+      await tap(tester, find.bySemanticsLabel('Delete'));
+
+      expect(pins, ['123456'], reason: 'only the first PIN was sent');
+
+      // After a wrong PIN the keypad works again and starts from an empty PIN.
+      reply.complete('Server says no');
+      await tester.pumpAndSettle();
+      await enterPin(tester, '654321');
+      expect(pins, ['123456', '654321']);
+    });
   });
 
   testWidgets('ErrorBox shows its message next to an error icon', (tester) async {
