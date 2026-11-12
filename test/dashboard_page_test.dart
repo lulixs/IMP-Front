@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -13,6 +14,9 @@ const dashboardJson =
     '{"alertThresholdDays":180,"categories":[{"id":1,"name":"Coats","symbol":null,"full":3,"half":2,"empty":1,"storedTooLong":2}]}';
 
 void main() {
+  // ApiClient reads tokens from locked storage, which tests don't have. This swaps in an empty stand-in.
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
   // Some tests fail the load on purpose. This keeps DashboardPage's debugPrint of
   // the error out of the test output. Flutter requires debugPrint to be put back
   // before each test ends, so it is restored here rather than in tearDown.

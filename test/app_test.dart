@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -10,6 +11,9 @@ import 'package:imp_app/screens/login/login_flow.dart';
 import 'package:imp_app/screens/setup/first_setup_flow.dart';
 
 void main() {
+  // ApiClient reads tokens from locked storage, which tests don't have. This swaps in an empty stand-in.
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
   final fields = find.byType(TextFormField);
 
   // The dashboard loads data when it opens, so give it a fake server instead of a real one.
