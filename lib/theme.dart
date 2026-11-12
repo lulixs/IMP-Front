@@ -14,6 +14,10 @@ class AppColors {
   static const half = Color(0xFFA8A8A8); // "Half" part of the fullness bar
   static const barEmpty = Color(0xFFF4F4F4); // "Empty" part of the fullness bar
   static const barBorder = Color(0xFF9A9A9A); // fullness bar outline
+  static const avatar = Color(0xFFE3E3E3); // circle with an employee's initial
+  static const avatarBorder = Color(0xFFB9B9B9); // its outline
+  static const avatarText = Color(0xFF7A7A7A); // its letter
+  static const overlay = Color(0x6B1E1E1E); // dims the screen behind a popup
 }
 
 ThemeData buildTheme() {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../validators.dart';
 import '../../widgets/common.dart';
 import 'setup_layout.dart';
 
@@ -16,9 +17,6 @@ class TabletNamePage extends StatefulWidget {
 }
 
 class _TabletNamePageState extends State<TabletNamePage> {
-  /// Matches DEVICE.device_name, VARCHAR(100) in the ERD.
-  static const _maxNameLength = 100;
-
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
 
@@ -48,9 +46,9 @@ class _TabletNamePageState extends State<TabletNamePage> {
             TextFormField(
               controller: _name,
               autofocus: true,
-              inputFormatters: [LengthLimitingTextInputFormatter(_maxNameLength)],
+              inputFormatters: [LengthLimitingTextInputFormatter(maxTabletNameLength)],
               decoration: const InputDecoration(hintText: 'e.g. Processing tablet'),
-              validator: (value) => (value ?? '').trim().isEmpty ? 'Enter a tablet name' : null,
+              validator: validateTabletName,
               onFieldSubmitted: (_) => _next(),
             ),
             const SizedBox(height: 20),
