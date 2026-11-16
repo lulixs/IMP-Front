@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
 
+import '../../api/api_exception.dart';
+import '../../models/employee.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 import 'login_layout.dart';
-import 'stub_employees.dart';
-
 /// Screen 2 of sign-in: pick a name, then enter a 6-digit PIN on the keypad (D-014).
 /// The 6th digit signs in. Whether the PIN is right is up to [onSignIn].
 class EmployeeLoginPage extends StatefulWidget {
-  /// Called with the chosen employee's name and the PIN once all 6 digits are entered.
+  /// called when fetching the list of employees who could sign in (dropdown)
+  final Future<List<Employee>> Function() loadEmployees;
+  
+  /// Called with the chosen employee's id and the PIN once all 6 digits are entered.
   /// Completes with null if sign-in worked, or the message to show in an error box if it failed.
   /// After a failure the PIN is cleared so it can be entered again. It will ask the server,
   /// so the keypad, the name, and Back are disabled until it completes.
-  final Future<String?> Function(String name, String pin) onSignIn;
+  final Future<String?> Function(int employeeId, String pin) onSignIn;
 
   /// Whether to show Back, which returns to the Master sign-in screen. Switch user hides it,
   /// since the tablet stays signed in to the Master account and there is nothing to go back to.
   final bool showBack;
 
-  const EmployeeLoginPage({super.key, required this.onSignIn, this.showBack = true});
+  const EmployeeLoginPage({super.key, required this.loadEmployees, required this.onSignIn, this.showBack = true});
 
   @override
   State<EmployeeLoginPage> createState() => _EmployeeLoginPageState();
@@ -27,7 +30,8 @@ class EmployeeLoginPage extends StatefulWidget {
 class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   static const _pinLength = 6;
 
-  String _name = stubEmployees.first;
+  List<Employee>? _employees;
+  Employee? _employee;
   String _pin = '';
 
   /// Message from the last failed sign-in, or null if there is nothing to show.
@@ -36,7 +40,36 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   /// True while waiting for [EmployeeLoginPage.onSignIn], so the PIN can't be sent again.
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadEmployees();
+  }
+
+  Future<void> _loadEmployees() async {
+    try {
+      final employees = await widget.loadEmployees();
+      if (!mounted) return;
+      setState(() {
+        _employees = employees;
+        _employee = employees.firstOrNull;
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      // A reply in an unexpected shape. Without this the spinner would never stop.
+      if (mounted) setState(() => _error = 'The list of names could not be read.');
+    }
+  }
+
+  /// Loads the names again after they failed, showing the spinner meanwhile.
+  void _retryLoad() {
+    setState(() => _error = null);
+    _loadEmployees();
+  }
+
   Future<void> _press(String key) async {
+    if (_employee == null) return;
     if (_busy) return;
     setState(() {
       if (key == _Keypad.delete) {
@@ -50,7 +83,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     setState(() => _busy = true);
     String? error;
     try {
-      error = await widget.onSignIn(_name, _pin);
+      error = await widget.onSignIn(_employee!.id, _pin);
     } finally {
       // Runs even if onSignIn throws, so the keypad never stays disabled.
       if (mounted) {
@@ -77,25 +110,29 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   }
 
   Widget _form(BuildContext context) {
+    if (_employees == null && _error == null) return const Center(child: CircularProgressIndicator());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_error != null) ErrorBox(_error!),
         const FieldLabel('Name'),
-        DropdownButtonFormField<String>(
-          initialValue: _name,
-          items: [
-            for (final name in stubEmployees) DropdownMenuItem(value: name, child: Text(name)),
-          ],
-          // Null disables the dropdown while waiting.
-          onChanged: _busy
-              ? null
-              : (name) => setState(() {
-                    _name = name!;
-                    _pin = '';
-                    _error = null;
-                  }),
-        ),
+        // The names failed to load, so there is nothing to pick until they load again.
+        if (_employees == null) PrimaryButton('Try again', onPressed: _retryLoad),
+        if (_employees != null)
+          DropdownButtonFormField<Employee>(
+            initialValue: _employee,
+            items: [
+              for (final employee in _employees!) DropdownMenuItem(value: employee, child: Text(employee.name)),
+            ],
+            // Null disables the dropdown while waiting.
+            onChanged: _busy
+                ? null
+                : (employee) => setState(() {
+                      _employee = employee!;
+                      _pin = '';
+                      _error = null;
+                    }),
+          ),
         const SizedBox(height: 14),
         const FieldLabel('PIN'),
         Row(

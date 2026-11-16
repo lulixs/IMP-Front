@@ -25,17 +25,21 @@ void main() {
     'employeeName': 'Grace Kim',
   };
   const dashboardJson = '{"alertThresholdDays": 180, "categories": []}';
+  const employeesJson = '{"employees": [{"id": 4, "name": "Grace Kim"}]}';
 
   // Every request the fake server got, as "METHOD path token"
   late List<String> requests;
   setUp(() => requests = []);
 
-  // A fake server that writes down each request and answers by path. Anything not listed gets the dashboard.
+  // A fake server that writes down each request and answers by path. The employee list has Grace Kim, and
+  // anything else not listed gets the dashboard.
   MockClient server(Map<String, http.Response Function()> replies) {
     return MockClient((request) async {
       requests.add('${request.method} ${request.url.path} ${request.headers['authorization']}');
       final reply = replies[request.url.path];
-      return reply == null ? http.Response(dashboardJson, 200) : reply();
+      if (reply != null) return reply();
+      if (request.url.path == '/api/employees/active') return http.Response(employeesJson, 200);
+      return http.Response(dashboardJson, 200);
     });
   }
 
@@ -120,7 +124,10 @@ void main() {
       expect(find.byType(EmployeeLoginPage), findsOneWidget);
       expect(find.text('Back'), findsNothing);
       expect(canGoBack(tester), isFalse);
-      expect(requests, isEmpty);
+      expect(requests, [
+        'GET /api/employees/active Bearer device-abc',
+      ], reason: 'only the names, with the device token');
+      expect(find.text('Grace Kim'), findsOneWidget);
     });
 
     testWidgets('A signed-in tablet opens the dashboard as the saved employee, with Master mode off', (tester) async {
@@ -261,12 +268,91 @@ void main() {
     });
   });
 
+  group('A tablet whose store was wiped (the database was emptied while it still had tokens)', () {
+    // What the real server answers once the database is empty: the tablet's rows are gone, so a session token is
+    // sessionEnded and a device token is deviceNotSetUp, and the store isn't set up.
+    MockClient wipedServer() {
+      return server({
+        '/api/dashboard': () => errorCode('sessionEnded'),
+        '/api/master-mode': () => errorCode('sessionEnded'),
+        '/api/employees/active': () => errorCode('deviceNotSetUp'),
+        '/api/setup/status': () => ok('{"isSetUp": false}'),
+      });
+    }
+
+    testWidgets('Ends on first-time setup, with both tokens and the employee forgotten', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({...both});
+      await tester.pumpWidget(ImpApp(client: wipedServer()));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FirstSetupFlow), findsOneWidget);
+      expect(find.byType(MasterLoginPage), findsNothing, reason: 'tablet setup would only say the store is not set up');
+      expect(await storage.readDeviceToken(), isNull);
+      expect(await storage.readSessionToken(), isNull);
+      expect(await storage.readEmployee(), isNull);
+      expect(tester.state<NavigatorState>(find.byType(Navigator)).canPop(), isFalse);
+    });
+
+    testWidgets('Goes through employee sign-in on the way, as each token is found to be gone', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({...both});
+      await tester.pumpWidget(ImpApp(client: wipedServer()));
+      await tester.pumpAndSettle();
+
+      // Start-up's Master mode call finds the session gone, then the name list finds the device gone, then
+      // start-up asks, with no token, whether the store exists.
+      expect(requests.first, 'DELETE /api/master-mode Bearer session-xyz');
+      expect(
+        requests,
+        containsAllInOrder(['GET /api/employees/active Bearer device-abc', 'GET /api/setup/status null']),
+      );
+    });
+
+    testWidgets('A tablet with only its device token also ends on first-time setup', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'deviceToken': 'device-abc'});
+      await tester.pumpWidget(ImpApp(client: wipedServer()));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FirstSetupFlow), findsOneWidget);
+      expect(await storage.readDeviceToken(), isNull);
+    });
+  });
+
+  group('A reply in an unexpected shape', () {
+    testWidgets('Setup status shows why on the start page instead of spinning forever', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      await tester.pumpWidget(ImpApp(client: server({'/api/setup/status': () => ok('{"something": "else"}')})));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text("Couldn't start IMP"), findsOneWidget);
+      expect(find.text('The server sent back something IMP could not read.'), findsOneWidget);
+    });
+
+    testWidgets('The employee list shows why on employee sign-in instead of spinning forever', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'deviceToken': 'device-abc'});
+      await tester.pumpWidget(ImpApp(client: server({'/api/employees/active': () => ok('{"names": ["Grace Kim"]}')})));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmployeeLoginPage), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('The list of names could not be read.'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+    });
+  });
+
   group('Sign-in error codes', () {
-    // The tablet is signed in and the dashboard's request gets this reply.
-    Future<void> dashboardGets(WidgetTester tester, http.Response reply) async {
+    // The tablet is signed in and the dashboard's request gets this reply. When start-up asks again, the server
+    // says whether the store is still set up.
+    Future<void> dashboardGets(WidgetTester tester, http.Response reply, {bool storeExists = true}) async {
       FlutterSecureStorage.setMockInitialValues({...both});
       await tester.pumpWidget(
-        ImpApp(client: server({'/api/dashboard': () => reply, '/api/master-mode': () => http.Response('', 204)})),
+        ImpApp(
+          client: server({
+            '/api/dashboard': () => reply,
+            '/api/master-mode': () => http.Response('', 204),
+            '/api/setup/status': () => ok('{"isSetUp": $storeExists}'),
+          }),
+        ),
       );
       await tester.pumpAndSettle();
     }
@@ -294,7 +380,9 @@ void main() {
       expect(await storage.readDeviceToken(), 'device-abc');
     });
 
-    testWidgets('deviceNotSetUp opens tablet setup and forgets the device token', (tester) async {
+    testWidgets('deviceNotSetUp in a store that still exists opens tablet setup and forgets the device token', (
+      tester,
+    ) async {
       await dashboardGets(tester, errorCode('deviceNotSetUp'));
 
       expect(tester.widget<MasterLoginPage>(find.byType(MasterLoginPage)).mode, MasterLoginMode.newTablet);
@@ -302,13 +390,66 @@ void main() {
       expect(await storage.readDeviceToken(), isNull);
     });
 
-    testWidgets('deviceRemoved opens tablet setup and forgets both tokens', (tester) async {
+    testWidgets('deviceNotSetUp after the store was wiped opens first-time setup', (tester) async {
+      await dashboardGets(tester, errorCode('deviceNotSetUp'), storeExists: false);
+
+      expect(find.byType(FirstSetupFlow), findsOneWidget);
+      expect(find.byType(MasterLoginPage), findsNothing);
+      expect(canGoBack(tester), isFalse);
+      expect(await storage.readDeviceToken(), isNull);
+    });
+
+    testWidgets('deviceRemoved in a store that still exists opens tablet setup and forgets both tokens', (
+      tester,
+    ) async {
       await dashboardGets(tester, errorCode('deviceRemoved'));
 
       expect(tester.widget<MasterLoginPage>(find.byType(MasterLoginPage)).mode, MasterLoginMode.newTablet);
       expect(canGoBack(tester), isFalse);
       expect(await storage.readDeviceToken(), isNull);
       expect(await storage.readSessionToken(), isNull);
+    });
+
+    testWidgets('deviceRemoved after the store was wiped opens first-time setup', (tester) async {
+      await dashboardGets(tester, errorCode('deviceRemoved'), storeExists: false);
+
+      expect(find.byType(FirstSetupFlow), findsOneWidget);
+      expect(await storage.readDeviceToken(), isNull);
+      expect(await storage.readSessionToken(), isNull);
+    });
+
+    testWidgets('The two device codes ask the server again, with no token, whether the store exists', (tester) async {
+      await dashboardGets(tester, errorCode('deviceNotSetUp'));
+
+      expect(requests, contains('GET /api/setup/status null'));
+    });
+
+    testWidgets('If the server can\'t say whether the store exists, the start page says so and Try again recovers', (
+      tester,
+    ) async {
+      // The connection is down the first time start-up asks, and back the second time.
+      var statusAsks = 0;
+      FlutterSecureStorage.setMockInitialValues({...both});
+      await tester.pumpWidget(
+        ImpApp(
+          client: MockClient((request) async {
+            if (request.url.path == '/api/setup/status') {
+              if (++statusAsks == 1) throw http.ClientException('No connection');
+              return ok('{"isSetUp": true}');
+            }
+            if (request.url.path == '/api/dashboard') return errorCode('deviceNotSetUp');
+            return http.Response('', 204);
+          }),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't start IMP"), findsOneWidget);
+      expect(find.text("Can't reach the server. Check the connection and try again."), findsOneWidget);
+
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<MasterLoginPage>(find.byType(MasterLoginPage)).mode, MasterLoginMode.newTablet);
     });
 
     testWidgets('An error with no code stays on the dashboard with its message and Try again', (tester) async {

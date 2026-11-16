@@ -14,7 +14,7 @@ export 'first_setup_data.dart';
 /// step with its fields still filled in.
 class FirstSetupFlow extends StatelessWidget {
   /// Called once the last step is confirmed, with what every step entered.
-  final void Function(FirstSetupData data) onFinished;
+  final Future<String?> Function(FirstSetupData data) onFinished;
 
   const FirstSetupFlow({super.key, required this.onFinished});
 

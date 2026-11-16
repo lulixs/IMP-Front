@@ -7,11 +7,37 @@ import 'setup_layout.dart';
 
 /// Step 4 of first-time setup: shows everything entered in steps 1 to 3 and asks
 /// for confirmation. The password and PIN are hidden until their eye is tapped.
-class ConfirmationPage extends StatelessWidget {
+class ConfirmationPage extends StatefulWidget {
   final FirstSetupData data;
-  final VoidCallback onConfirm;
+  final Future<String?> Function() onConfirm;
 
   const ConfirmationPage({super.key, required this.data, required this.onConfirm});
+
+  @override
+  State<ConfirmationPage> createState() => _ConfirmationPageState();
+}
+
+class _ConfirmationPageState extends State<ConfirmationPage> {
+  String? _error;
+  bool _busy = false;
+  
+  Future<void> _confirm() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+
+    String? error;
+    try {
+      error = await widget.onConfirm();
+    } finally {
+      // Runs even if onConfirm throws, so the buttons never stay disabled.
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = error;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,18 +48,19 @@ class ConfirmationPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const NoteBox('Review and confirm setup below.'),
+          if (_error != null) ErrorBox(_error!),
           const _SectionTitle('Master account'),
-          _SummaryRow(label: 'Email', value: data.masterEmail),
-          _SummaryRow(label: 'Password', value: data.masterPassword, secret: true),
+          _SummaryRow(label: 'Email', value: widget.data.masterEmail),
+          _SummaryRow(label: 'Password', value: widget.data.masterPassword, secret: true),
           const Divider(height: 24, color: AppColors.line),
           const _SectionTitle('Tablet'),
-          _SummaryRow(label: 'Tablet name', value: data.tabletName),
+          _SummaryRow(label: 'Tablet name', value: widget.data.tabletName),
           const Divider(height: 24, color: AppColors.line),
           const _SectionTitle('First employee'),
-          _SummaryRow(label: 'Employee name', value: data.employeeName),
-          _SummaryRow(label: 'PIN', value: data.employeePin, secret: true),
+          _SummaryRow(label: 'Employee name', value: widget.data.employeeName),
+          _SummaryRow(label: 'PIN', value: widget.data.employeePin, secret: true),
           const SizedBox(height: 20),
-          SetupButtons(nextLabel: 'Confirm', onNext: onConfirm),
+          SetupButtons(nextLabel: 'Confirm', onNext: _busy ? null : _confirm),
         ],
       ),
     );

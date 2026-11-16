@@ -76,7 +76,7 @@ class SetupLayout extends StatelessWidget {
 /// to the previous step, which still has its fields filled in.
 class SetupButtons extends StatelessWidget {
   final String nextLabel;
-  final VoidCallback onNext;
+  final VoidCallback? onNext;
 
   const SetupButtons({super.key, this.nextLabel = 'Next', required this.onNext});
 

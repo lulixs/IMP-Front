@@ -7,7 +7,6 @@ import 'api/auth_api.dart';
 import 'api/token_store.dart';
 import 'screens/dashboard/dashboard_page.dart';
 import 'screens/login/employee_login_page.dart';
-import 'screens/login/login_flow.dart';
 import 'screens/login/master_login_page.dart';
 import 'screens/setup/first_setup_flow.dart';
 import 'session.dart';
@@ -49,12 +48,15 @@ class _ImpAppState extends State<ImpApp> {
       theme: buildTheme(),
       routes: {AppShell.switchUserRoute: (_) => _employeeSignIn()},
       home: switch (widget.start) {
-        null => StartPage(decide: () => decideStart(_tokens, _auth), onDecided: _open),
+        null => _startPage(),
         StartScreen.setup => _firstSetup(),
         StartScreen.login => _signBackIn(),
       },
     );
   }
+
+  /// Decides the start screen from the saved tokens, with a spinner meanwhile, then opens it.
+  Widget _startPage() => StartPage(decide: () => decideStart(_tokens, _auth), onDecided: _open);
 
   /// Opens the screen decideStart picked.
   void _open(Start start) {
@@ -77,15 +79,15 @@ class _ImpAppState extends State<ImpApp> {
         openFresh(_employeeSignIn());
       case 'deviceExpired':
         openFresh(_signBackIn());
+      // The device token is gone, so start-up asks the server whether the store still exists: tablet setup if
+      // it does, first-time setup if the database was wiped.
       case 'deviceNotSetUp' || 'deviceRemoved':
-        openFresh(_tabletSetup());
+        openFresh(_startPage());
     }
   }
 
   /// First-time setup. Confirming saves the store on the server, and AuthApi.setUp saves both tokens and the
   /// employee, so a restart opens the dashboard.
-  /// Temporary: a failed setup only shows the server's sentence in a bar at the bottom. Connect the sign-in
-  /// screens shows it on the confirmation screen instead.
   Widget _firstSetup() {
     return FirstSetupFlow(
       onFinished: (data) async {
@@ -97,45 +99,60 @@ class _ImpAppState extends State<ImpApp> {
             data.employeeName,
             data.employeePin,
           );
-          _openDashboard(Session(employeeName: result.employee.name));
+          _openDashboard(Session(employeeId: result.employee.id, employeeName: result.employee.name, auth: _auth));
+          return null; // it worked, return no error message
         } on ApiException catch (e) {
-          final context = navigatorKey.currentContext;
-          if (context != null && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-          }
+          return e.message; // did not work, return error message
         }
       },
     );
   }
 
   /// Setting up a tablet the store doesn't know yet, then employee sign-in.
-  /// Temporary: uses LoginFlow's stand-in check until Connect the sign-in screens calls POST /api/devices.
   Widget _tabletSetup() {
     return MasterLoginPage(
       mode: MasterLoginMode.newTablet,
-      onSignIn: (email, password, _) async {
-        final error = await LoginFlow.checkMaster(email, password);
-        if (error == null) openFresh(_employeeSignIn());
-        return error;
+      onSignIn: (email, password, tabletName) async {
+        try {
+          await _auth.addTablet(tabletName!, email, password);
+          openFresh(_employeeSignIn());
+          return null; // success
+        } on ApiException catch (e) {
+          return e.message;
+        }
       },
     );
   }
 
   /// Signing the tablet back in after its device token expired, then employee sign-in.
-  /// Temporary: LoginFlow's stand-in checks until Connect the sign-in screens calls POST /api/devices/renew.
   Widget _signBackIn() {
-    return LoginFlow(onFinished: (employeeName) => _openDashboard(Session(employeeName: employeeName)));
+    return MasterLoginPage(
+      mode: MasterLoginMode.signIn,
+      onSignIn: (email, password, _) async {
+        try {
+          await _auth.renewTablet(email, password);
+          openFresh(_employeeSignIn());
+          return null; // success
+        } on ApiException catch (e) {
+          return e.message;
+        }
+      },
+    );
   }
 
   /// Employee sign-in on its own: the PIN screen, with no Back button. Also where Switch user lands.
-  /// Temporary: stub names and LoginFlow's stand-in check until Connect the sign-in screens calls POST /api/sessions.
   Widget _employeeSignIn() {
     return EmployeeLoginPage(
+      loadEmployees: _auth.activeEmployees,
       showBack: false,
-      onSignIn: (name, pin) async {
-        final error = await LoginFlow.checkPin(name, pin);
-        if (error == null) _openDashboard(Session(employeeName: name));
-        return error;
+      onSignIn: (employeeId, pin) async {
+        try {
+          final result = await _auth.signIn(employeeId, pin);
+          _openDashboard(Session(employeeId: result.employee.id, employeeName: result.employee.name, auth: _auth));
+          return null;
+        } on ApiException catch (e) {
+          return e.message;
+        }
       },
     );
   }
@@ -155,12 +172,12 @@ class _ImpAppState extends State<ImpApp> {
       openFresh(_employeeSignIn());
       return;
     }
-    _openDashboard(Session(employeeName: employee.name));
+    _openDashboard(Session(employeeId: employee.id, employeeName: employee.name, auth: _auth));
     try {
       await _auth.masterModeOff();
     } on ApiException {
-      // Master mode is already off in the app. If the session ended, ApiClient has opened employee sign-in.
-      // Until the Master mode endpoints are merged into IMP-Back, this call gets a 404.
+      // Master mode is already off in the app, and the server can't be reached to agree. If the session ended,
+      // ApiClient has opened employee sign-in.
     }
   }
 }

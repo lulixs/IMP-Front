@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../screens/login/login_flow.dart';
+import '../api/api_exception.dart';
 import '../screens/login/master_login_page.dart';
 import '../session.dart';
 import '../theme.dart';
@@ -140,9 +140,9 @@ class _Sidebar extends StatelessWidget {
     );
   }
 
-  /// Asks first, then turns Master mode the other way. Turning it on also needs the Master
-  /// account to sign in (D-094). Turning it off only logs out of Master mode, so it ends as
-  /// soon as the popup is confirmed. Cancel at any step leaves it as it was.
+  /// Asks first, then turns Master mode the other way, through the server. Turning it on also needs the
+  /// Master account to sign in (D-094), and only happens once the server accepts it. Turning it off ends
+  /// as soon as the popup is confirmed and the server agrees. Cancel at any step leaves it as it was.
   Future<void> _toggleMasterMode(BuildContext context) async {
     final turnOn = !session.masterMode;
     final confirmed = await showConfirmPopup(
@@ -156,32 +156,47 @@ class _Sidebar extends StatelessWidget {
     );
     if (!confirmed) return;
     if (!turnOn) {
-      session.masterMode = false;
+      try {
+        await session.turnOffMasterMode();
+      } on ApiException catch (e) {
+        // Master mode stays on, and the bar at the bottom says why.
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
       return;
     }
     if (!context.mounted) return;
 
-    // The sign-in screen closes itself with true once the Master account signs in.
-    // Cancel or the back button close it with null.
-    final signedIn = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
+    // Session turns Master mode on once the server accepts the sign-in, and the screen closes itself.
+    // A refused sign-in shows the server's sentence there. Cancel or the back button leave it off.
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
         builder: (pageContext) => MasterLoginPage(
           mode: MasterLoginMode.masterToggle,
           onSignIn: (email, password, _) async {
-            final error = await LoginFlow.checkMaster(email, password);
-            if (error == null && pageContext.mounted) Navigator.of(pageContext).pop(true);
+            final error = await session.turnOnMasterMode(email, password);
+            if (error == null && pageContext.mounted) Navigator.of(pageContext).pop();
             return error;
           },
         ),
       ),
     );
-    if (signedIn ?? false) session.masterMode = true;
   }
 
-  /// Signs the employee out: every page is closed, which throws away this Session, and the
-  /// PIN screen opens. The next sign-in makes a new Session, so Master mode starts off again.
-  void _switchUser(BuildContext context) {
-    Navigator.of(context).pushNamedAndRemoveUntil(AppShell.switchUserRoute, (_) => false);
+  /// Signs the employee out on the server, then closes every page, which throws away this Session, and
+  /// opens the PIN screen. The next sign-in makes a new Session, so Master mode starts off again. If signing
+  /// out fails, it stays put and the bar at the bottom says why.
+  Future<void> _switchUser(BuildContext context) async {
+    try {
+      await session.signOut();
+    } on ApiException catch (e) {
+      if (e.code == null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
+    if (context.mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil(AppShell.switchUserRoute, (_) => false);
+    }
   }
 }
 

@@ -16,7 +16,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> showFlow(WidgetTester tester, void Function(FirstSetupData data) onFinished) {
+  Future<void> showFlow(WidgetTester tester, Future<String?> Function(FirstSetupData data) onFinished) {
     return tester.pumpWidget(
       MaterialApp(
         theme: buildTheme(),
@@ -46,7 +46,10 @@ void main() {
 
   testWidgets('All four steps finish with everything that was entered', (tester) async {
     FirstSetupData? data;
-    await showFlow(tester, (d) => data = d);
+    await showFlow(tester, (d) async {
+      data = d;
+      return null;
+    });
 
     await fillMasterAccount(tester);
     expect(find.byType(TabletNamePage), findsOneWidget);
@@ -67,7 +70,7 @@ void main() {
   });
 
   testWidgets('Back on each step returns to the one before with its fields still filled in', (tester) async {
-    await showFlow(tester, (_) {});
+    await showFlow(tester, (_) async => null);
 
     await fillMasterAccount(tester);
     await fillTabletName(tester);
@@ -88,7 +91,7 @@ void main() {
   });
 
   testWidgets("The tablet's back button also returns to the previous step", (tester) async {
-    await showFlow(tester, (_) {});
+    await showFlow(tester, (_) async => null);
 
     await fillMasterAccount(tester);
     await tester.binding.handlePopRoute();
@@ -99,7 +102,7 @@ void main() {
   });
 
   testWidgets('Every step counts out of 4', (tester) async {
-    await showFlow(tester, (_) {});
+    await showFlow(tester, (_) async => null);
 
     expect(find.textContaining('step 1 of 4.'), findsOneWidget);
     await fillMasterAccount(tester);

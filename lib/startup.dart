@@ -66,6 +66,9 @@ class _StartPageState extends State<StartPage> {
       if (mounted) widget.onDecided(start);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      // A reply in an unexpected shape. Without this the spinner would never stop.
+      if (mounted) setState(() => _error = 'The server sent back something IMP could not read.');
     }
   }
 
