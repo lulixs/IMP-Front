@@ -2,7 +2,7 @@
 
 The tablet app for IMP (Inventory Management Platform), built with Flutter. It talks to the backend in [IMP-Back](https://github.com/lulixs/IMP-Back).
 
-**Status:** first-time setup, sign-in, and the dashboard are built. Sign-in accepts any valid email, any password except `wrong`, and any PIN except `000000`, and lists one stub employee, Dan Finkle. The password `wrong` and the PIN `000000` always fail, so the error box can be seen. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar shows the signed-in employee, with a Master tag that turns Master mode on after a popup and a Master sign-in (unlocking the Master-only items, which open the same popup while locked) or off after just the popup and a Switch user button that returns to the PIN screen. The other sidebar items and the bottom bar buttons don't do anything yet. `ApiClient` can send GET, POST, PUT, and DELETE, shows the server's error sentence, and sends a saved sign-in token (kept in `TokenStore` with `flutter_secure_storage`), but nothing signs in or saves a token yet. Nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
+**Status:** first-time setup, sign-in, and the dashboard are built. The app picks its first screen from the saved tokens (`lib/startup.dart`): first-time setup or tablet setup on a new tablet (it asks the server which), employee sign-in with only a device token, and the dashboard as the saved employee with both. First-time setup is saved on the server and saves both tokens and the employee. The other sign-in screens still use stand-ins: tablet setup, signing back in, and employee sign-in accept any valid email, any password except `wrong`, and any PIN except `000000`, and list one stub employee, Dan Finkle. The password `wrong` and the PIN `000000` always fail, so the error box can be seen. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar shows the signed-in employee, with a Master tag that turns Master mode on after a popup and a Master sign-in (unlocking the Master-only items, which open the same popup while locked) or off after just the popup and a Switch user button that returns to the PIN screen. The other sidebar items and the bottom bar buttons don't do anything yet. `ApiClient` can send GET, POST, PUT, and DELETE, shows the server's error sentence, and sends a saved sign-in token (kept in `TokenStore` with `flutter_secure_storage`). On the four sign-in error codes it clears the right tokens and the app opens employee sign-in, signing back in, or tablet setup. `AuthApi` has every call in IMP-Back's auth.md, and saves the tokens and employee it gets back. Apart from first-time setup, nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
 
 ## Setup (once per computer)
 
@@ -17,12 +17,12 @@ The tablet app for IMP (Inventory Management Platform), built with Flutter. It t
 ## Running the app
 
 ```
-flutter run -d chrome                              # normal start, with first-time setup
-flutter run -d chrome -t lib/dev_dashboard.dart    # skips setup and opens the dashboard
+flutter run -d chrome                              # normal start, on the screen the saved tokens pick
+flutter run -d chrome -t lib/dev_dashboard.dart    # opens the dashboard once you have signed in on this browser
 flutter run -d chrome -t lib/dev_login.dart        # skips setup and opens sign-in
 ```
 
-`lib/dev_dashboard.dart` and `lib/dev_login.dart` are for debugging only. Release builds always start from `lib/main.dart`, which runs first-time setup.
+`lib/dev_dashboard.dart` and `lib/dev_login.dart` are for debugging only. Release builds always start from `lib/main.dart`, which picks the first screen from the saved tokens.
 
 While the app is running, press `r` to reload your changes, `R` to restart, and `q` to quit.
 
@@ -84,7 +84,7 @@ adb devices                                # should show: emulator-5554   device
 flutter pub get                            # only needed after pulling changes
 flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:5000
 ```
-To skip setup and open the dashboard, add `-t lib/dev_dashboard.dart`. Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which works in Chrome, and on a USB phone after `adb reverse` (below).
+To land on the dashboard once you have signed in on the emulator, add `-t lib/dev_dashboard.dart`. Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which works in Chrome, and on a USB phone after `adb reverse` (below).
 
 **When you're done:** press `q` in terminal 2, `Ctrl+C` in terminal 1, and close the emulator window. To stop the database too, run `docker compose stop` in IMP-Back's `db` folder (your data is kept).
 
@@ -107,13 +107,14 @@ flutter test       # should say: All tests passed!
 
 ```
 lib/
-├── main.dart              starts the app with first-time setup
-├── dev_dashboard.dart     starts the app on the dashboard (debugging only)
+├── main.dart              starts the app on the screen startup.dart picks, and opens each sign-in screen
+├── dev_dashboard.dart     the normal start-up, for dashboard work: opens the dashboard when signed in (debugging only)
 ├── dev_login.dart         starts the app on sign-in (debugging only)
 ├── theme.dart             colors and text field style
 ├── validators.dart        form checks shared by more than one screen, like the email check
 ├── session.dart           who is signed in and whether Master mode is on
-├── api/                   ApiClient, ApiException, and TokenStore, for talking to the backend
+├── startup.dart           picks the first screen from the saved tokens, and opens screens from outside a widget
+├── api/                   ApiClient, ApiException, TokenStore, and AuthApi (the sign-in calls), for talking to the backend
 ├── config.dart            the backend's address and request timeout
 ├── models/                data classes for API responses, with fromJson
 ├── screens/
