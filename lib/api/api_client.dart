@@ -14,9 +14,10 @@ enum TokenType { none, device, session }
 class ApiClient {
   final http.Client _http;
   final TokenStore _tokens;
+  final void Function(String code)? onTokenProblem;
 
   // Uses provided client and token store, or creates new ones
-  ApiClient({http.Client? client, TokenStore? tokens})
+  ApiClient({http.Client? client, TokenStore? tokens, this.onTokenProblem})
     : _http = client ?? http.Client(), _tokens = tokens ?? TokenStore();
 
   // Sends request through _request based on method. Most endpoints need the session token, so it is the default
@@ -79,7 +80,13 @@ class ApiClient {
     }
     // Any error reply becomes an ApiException, with the server's sentence when it sent one
     if (res.statusCode >= 400) {
-      throw _errorFrom(res, screen);
+      final error = _errorFrom(res, screen);
+      final code = error.code;
+      
+      await _clearTokensFor(error.code);
+      if (code != null) onTokenProblem?.call(code);
+      
+      throw error;
     }
     // Returns null when body is empty
     if (res.body.isEmpty) {
@@ -116,5 +123,17 @@ class ApiClient {
       // Blank or non-JSON body, so the backup sentence stays
     }
     return ApiException(message, screen: screen, statusCode: res.statusCode, code: code);
+  }
+
+  Future<void> _clearTokensFor(String? code) async {
+    switch (code) {
+      case 'sessionEnded':
+        await _tokens.deleteSessionToken();
+      case 'deviceNotSetUp':
+        await _tokens.deleteDeviceToken();
+      case 'deviceRemoved':
+        await _tokens.deleteSessionToken();
+        await _tokens.deleteDeviceToken();
+    }
   }
 }
