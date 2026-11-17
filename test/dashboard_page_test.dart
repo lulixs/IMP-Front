@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:imp_app/api/api_client.dart';
+import 'package:imp_app/api/auth_api.dart';
 import 'package:imp_app/screens/dashboard/category_card.dart';
 import 'package:imp_app/screens/dashboard/dashboard_page.dart';
 import 'package:imp_app/session.dart';
@@ -47,7 +48,7 @@ void main() {
         ),
         home: DashboardPage(
           api: ApiClient(client: client),
-          session: Session(employeeName: 'Dan Finkle'),
+          session: Session(employeeId: 1, employeeName: 'Dan Finkle', auth: AuthApi(ApiClient(client: client))),
         ),
       ),
     );
