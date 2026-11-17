@@ -3,7 +3,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:imp_app/api/api_client.dart';
 import 'package:imp_app/main.dart';
 import 'package:imp_app/screens/dashboard/dashboard_page.dart';
 import 'package:imp_app/screens/login/employee_login_page.dart';
@@ -16,10 +15,16 @@ void main() {
 
   final fields = find.byType(TextFormField);
 
-  // The dashboard loads data when it opens, so give it a fake server instead of a real one.
-  final api = ApiClient(
-    client: MockClient((request) async => http.Response('{"alertThresholdDays": 180, "categories": []}', 200)),
-  );
+  // A fake server, so nothing reaches a real one. A new tablet asks whether the store is set up (it isn't),
+  // first-time setup is saved, and the dashboard loads its data.
+  final client = MockClient((request) async {
+    return switch (request.url.path) {
+      '/api/setup/status' => http.Response('{"isSetUp": false}', 200),
+      '/api/setup' => http.Response(
+          '{"deviceToken": "device-abc", "sessionToken": "session-xyz", "employee": {"id": 1, "name": "Mabel"}}', 201),
+      _ => http.Response('{"alertThresholdDays": 180, "categories": []}', 200),
+    };
+  });
 
   Future<void> tapButton(WidgetTester tester, String label) async {
     await tester.ensureVisible(find.text(label));
@@ -28,7 +33,9 @@ void main() {
   }
 
   testWidgets('Confirming setup opens the dashboard, and back cannot return to setup', (tester) async {
-    await tester.pumpWidget(ImpApp(api: api));
+    await tester.pumpWidget(ImpApp(client: client));
+    // A new tablet opens first-time setup once the server says the store isn't set up.
+    await tester.pumpAndSettle();
 
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'secret123');
@@ -52,12 +59,15 @@ void main() {
     expect(navigator.canPop(), isFalse);
   });
 
-  testWidgets('StartScreen.dashboard opens the dashboard directly', (tester) async {
-    await tester.pumpWidget(ImpApp(start: StartScreen.dashboard, api: api));
+  testWidgets('A tablet with saved tokens opens the dashboard directly', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(
+        {'deviceToken': 'device-abc', 'sessionToken': 'session-xyz', 'employeeId': '4', 'employeeName': 'Grace Kim'});
+    await tester.pumpWidget(ImpApp(client: client));
+    await tester.pumpAndSettle();
 
     expect(find.byType(DashboardPage), findsOneWidget);
-    expect(tester.widget<DashboardPage>(find.byType(DashboardPage)).session.employeeName, 'Dan Finkle',
-        reason: 'the stub employee');
+    expect(tester.widget<DashboardPage>(find.byType(DashboardPage)).session.employeeName, 'Grace Kim',
+        reason: 'the saved employee');
     expect(find.byType(FirstSetupFlow), findsNothing);
   });
 
@@ -65,7 +75,7 @@ void main() {
     tester.view.physicalSize = const Size(1024, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(ImpApp(start: StartScreen.login, api: api));
+    await tester.pumpWidget(ImpApp(start: StartScreen.login, client: client));
 
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'x');
@@ -86,7 +96,7 @@ void main() {
     tester.view.physicalSize = const Size(1024, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(ImpApp(start: StartScreen.login, api: api));
+    await tester.pumpWidget(ImpApp(start: StartScreen.login, client: client));
     await tester.enterText(fields.at(0), 'store@example.org');
     await tester.enterText(fields.at(1), 'x');
     await tester.tap(find.widgetWithText(FilledButton, 'Sign In'));

@@ -177,4 +177,122 @@ void main() {
 
     expect(sent.headers['authorization'], isNull);
   });
+
+  group('Sign-in error codes', () {
+    // The tablet has both tokens and a signed-in employee, so each test shows what gets cleared.
+    late List<String> reported;
+
+    setUp(() {
+      FlutterSecureStorage.setMockInitialValues(
+          {'deviceToken': 'device-abc', 'sessionToken': 'session-xyz', 'employeeId': '4', 'employeeName': 'Grace Kim'});
+      reported = [];
+    });
+
+    // An ApiClient whose fake server always answers with this status and body.
+    ApiClient replying(int status, String body) {
+      return ApiClient(
+        client: MockClient((request) async => http.Response(body, status)),
+        tokens: TokenStore(),
+        onTokenProblem: reported.add,
+      );
+    }
+
+    String errorWith(String code) => '{"error": "A sentence.", "code": "$code"}';
+
+    // Sends one request, checks it still fails with the server's code, and returns what is left in storage.
+    Future<Map<String, String?>> failWith(ApiClient api, String? code) async {
+      try {
+        await api.get('/api/dashboard', screen: 'Test');
+        fail('Expected an ApiException');
+      } on ApiException catch (e) {
+        expect(e.code, code);
+      }
+      final tokens = TokenStore();
+      return {
+        'device': await tokens.readDeviceToken(),
+        'session': await tokens.readSessionToken(),
+        'employee': (await tokens.readEmployee())?.name,
+      };
+    }
+
+    test('sessionEnded clears the session token and the employee, keeps the device token, and reports it', () async {
+      final left = await failWith(replying(401, errorWith('sessionEnded')), 'sessionEnded');
+
+      expect(left, {'device': 'device-abc', 'session': null, 'employee': null});
+      expect(reported, ['sessionEnded']);
+    });
+
+    test('deviceExpired keeps every token, since signing back in needs the old device token', () async {
+      final left = await failWith(replying(401, errorWith('deviceExpired')), 'deviceExpired');
+
+      expect(left, {'device': 'device-abc', 'session': 'session-xyz', 'employee': 'Grace Kim'});
+      expect(reported, ['deviceExpired']);
+    });
+
+    test('deviceNotSetUp clears only the device token', () async {
+      final left = await failWith(replying(401, errorWith('deviceNotSetUp')), 'deviceNotSetUp');
+
+      expect(left, {'device': null, 'session': 'session-xyz', 'employee': 'Grace Kim'});
+      expect(reported, ['deviceNotSetUp']);
+    });
+
+    test('deviceRemoved clears both tokens and the employee', () async {
+      final left = await failWith(replying(401, errorWith('deviceRemoved')), 'deviceRemoved');
+
+      expect(left, {'device': null, 'session': null, 'employee': null});
+      expect(reported, ['deviceRemoved']);
+    });
+
+    test('An error with no code clears nothing and reports nothing', () async {
+      final left = await failWith(replying(401, '{"error": "Incorrect PIN. Try again."}'), null);
+
+      expect(left, {'device': 'device-abc', 'session': 'session-xyz', 'employee': 'Grace Kim'});
+      expect(reported, isEmpty);
+    });
+
+    test('An unknown code clears nothing, but is still reported', () async {
+      final left = await failWith(replying(401, errorWith('somethingNew')), 'somethingNew');
+
+      expect(left, {'device': 'device-abc', 'session': 'session-xyz', 'employee': 'Grace Kim'});
+      expect(reported, ['somethingNew']);
+    });
+
+    test('A 500 clears nothing and reports nothing', () async {
+      final left = await failWith(replying(500, '{"error": "Something went wrong. Please try again later."}'), null);
+
+      expect(left, {'device': 'device-abc', 'session': 'session-xyz', 'employee': 'Grace Kim'});
+      expect(reported, isEmpty);
+    });
+
+    test('A reply that worked reports nothing', () async {
+      await replying(200, '{}').get('/api/dashboard', screen: 'Test');
+
+      expect(reported, isEmpty);
+    });
+
+    test('The tokens are already cleared when the app is told, so the next screen sees them gone', () async {
+      String? sessionWhenTold = 'not told';
+      final api = ApiClient(
+        client: MockClient((request) async => http.Response(errorWith('sessionEnded'), 401)),
+        tokens: TokenStore(),
+        onTokenProblem: (_) async => sessionWhenTold = await TokenStore().readSessionToken(),
+      );
+
+      await failWith(api, 'sessionEnded');
+      await pumpEventQueue();
+
+      expect(sessionWhenTold, isNull);
+    });
+
+    test('Without onTokenProblem the tokens are still cleared and the error still thrown', () async {
+      final api = ApiClient(
+        client: MockClient((request) async => http.Response(errorWith('sessionEnded'), 401)),
+        tokens: TokenStore(),
+      );
+
+      final left = await failWith(api, 'sessionEnded');
+
+      expect(left['session'], isNull);
+    });
+  });
 }

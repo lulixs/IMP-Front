@@ -1,83 +1,166 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'api/api_client.dart';
+import 'api/api_exception.dart';
+import 'api/auth_api.dart';
+import 'api/token_store.dart';
 import 'screens/dashboard/dashboard_page.dart';
 import 'screens/login/employee_login_page.dart';
 import 'screens/login/login_flow.dart';
-import 'screens/login/stub_employees.dart';
+import 'screens/login/master_login_page.dart';
 import 'screens/setup/first_setup_flow.dart';
 import 'session.dart';
+import 'startup.dart';
 import 'theme.dart';
 import 'widgets/app_shell.dart';
 
 void main() => runApp(const ImpApp());
 
-/// The screen the app opens on. Only the debug entry points in lib/dev*.dart change it.
-enum StartScreen { setup, login, dashboard }
+/// Debug only: skips start-up routing and opens this screen. Only the debug entry points in lib/dev*.dart set it.
+enum StartScreen { setup, login }
 
-class ImpApp extends StatelessWidget {
-  final StartScreen start;
+class ImpApp extends StatefulWidget {
+  /// Null runs start-up routing (see startup.dart), which picks the screen from the saved tokens.
+  final StartScreen? start;
 
-  /// Passed to the pages that load data. Tests give a fake one so nothing reaches a real server.
-  final ApiClient? api;
+  /// The HTTP client every request goes through. Tests give a fake one so nothing reaches a real server.
+  final http.Client? client;
 
-  const ImpApp({super.key, this.start = StartScreen.setup, this.api});
+  const ImpApp({super.key, this.start, this.client});
+
+  @override
+  State<ImpApp> createState() => _ImpAppState();
+}
+
+class _ImpAppState extends State<ImpApp> {
+  final _tokens = TokenStore();
+
+  /// The one ApiClient the whole app shares, so every request reports token problems to the same place.
+  late final _api = ApiClient(client: widget.client, tokens: _tokens, onTokenProblem: _onTokenProblem);
+  late final _auth = AuthApi(_api, tokens: _tokens);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'IMP',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      routes: {AppShell.switchUserRoute: _switchUser},
-      home: switch (start) {
-        StartScreen.setup => _setup(),
-        StartScreen.login => _login(),
-        // Debug only: skipping sign-in, so pretend the stub employee signed in.
-        StartScreen.dashboard => DashboardPage(api: api, session: Session(employeeName: stubEmployees.first)),
+      routes: {AppShell.switchUserRoute: (_) => _employeeSignIn()},
+      home: switch (widget.start) {
+        null => StartPage(decide: () => decideStart(_tokens, _auth), onDecided: _open),
+        StartScreen.setup => _firstSetup(),
+        StartScreen.login => _signBackIn(),
       },
     );
   }
 
-  Widget _setup() {
-    // Builder gives a context below MaterialApp, which Navigator needs.
-    return Builder(
-      builder: (context) => FirstSetupFlow(
-        // Temporary: the setup data is not saved anywhere yet, since there is no
-        // backend call. Finishing setup signs in the new employee and opens the dashboard.
-        onFinished: (data) => _openDashboard(context, Session(employeeName: data.employeeName)),
-      ),
+  /// Opens the screen decideStart picked.
+  void _open(Start start) {
+    switch (start) {
+      case Start.firstSetup:
+        openFresh(_firstSetup());
+      case Start.tabletSetup:
+        openFresh(_tabletSetup());
+      case Start.employeeSignIn:
+        openFresh(_employeeSignIn());
+      case Start.dashboard:
+        _openSavedDashboard();
+    }
+  }
+
+  /// ApiClient calls this after clearing the tokens for one of the four codes in IMP-Back docs/api/README.md.
+  void _onTokenProblem(String code) {
+    switch (code) {
+      case 'sessionEnded':
+        openFresh(_employeeSignIn());
+      case 'deviceExpired':
+        openFresh(_signBackIn());
+      case 'deviceNotSetUp' || 'deviceRemoved':
+        openFresh(_tabletSetup());
+    }
+  }
+
+  /// First-time setup. Confirming saves the store on the server, and AuthApi.setUp saves both tokens and the
+  /// employee, so a restart opens the dashboard.
+  /// Temporary: a failed setup only shows the server's sentence in a bar at the bottom. Connect the sign-in
+  /// screens shows it on the confirmation screen instead.
+  Widget _firstSetup() {
+    return FirstSetupFlow(
+      onFinished: (data) async {
+        try {
+          final result = await _auth.setUp(
+            data.masterEmail,
+            data.masterPassword,
+            data.tabletName,
+            data.employeeName,
+            data.employeePin,
+          );
+          _openDashboard(Session(employeeName: result.employee.name));
+        } on ApiException catch (e) {
+          final context = navigatorKey.currentContext;
+          if (context != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+          }
+        }
+      },
     );
   }
 
-  Widget _login() {
-    return Builder(
-      // Temporary: sign-in uses stand-in checks (see LoginFlow).
-      builder: (context) => LoginFlow(
-        onFinished: (employeeName) => _openDashboard(context, Session(employeeName: employeeName)),
-      ),
-    );
-  }
-
-  /// Where Switch user lands: the PIN screen on its own. The tablet stays signed in to the
-  /// Master account, so only the employee signs in again, and that makes a new Session.
-  Widget _switchUser(BuildContext context) {
-    return EmployeeLoginPage(
-      showBack: false,
-      onSignIn: (name, pin) async {
-        final error = await LoginFlow.checkPin(name, pin);
-        if (error == null && context.mounted) _openDashboard(context, Session(employeeName: name));
+  /// Setting up a tablet the store doesn't know yet, then employee sign-in.
+  /// Temporary: uses LoginFlow's stand-in check until Connect the sign-in screens calls POST /api/devices.
+  Widget _tabletSetup() {
+    return MasterLoginPage(
+      mode: MasterLoginMode.newTablet,
+      onSignIn: (email, password, _) async {
+        final error = await LoginFlow.checkMaster(email, password);
+        if (error == null) openFresh(_employeeSignIn());
         return error;
       },
     );
   }
 
-  /// Opens the dashboard for a new sign-in and clears everything behind it, so the
-  /// back button can't return to setup or sign-in.
-  void _openDashboard(BuildContext context, Session session) {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => DashboardPage(api: api, session: session)),
-      (_) => false,
+  /// Signing the tablet back in after its device token expired, then employee sign-in.
+  /// Temporary: LoginFlow's stand-in checks until Connect the sign-in screens calls POST /api/devices/renew.
+  Widget _signBackIn() {
+    return LoginFlow(onFinished: (employeeName) => _openDashboard(Session(employeeName: employeeName)));
+  }
+
+  /// Employee sign-in on its own: the PIN screen, with no Back button. Also where Switch user lands.
+  /// Temporary: stub names and LoginFlow's stand-in check until Connect the sign-in screens calls POST /api/sessions.
+  Widget _employeeSignIn() {
+    return EmployeeLoginPage(
+      showBack: false,
+      onSignIn: (name, pin) async {
+        final error = await LoginFlow.checkPin(name, pin);
+        if (error == null) _openDashboard(Session(employeeName: name));
+        return error;
+      },
     );
+  }
+
+  /// Opens the dashboard for a new sign-in, with nothing behind it.
+  void _openDashboard(Session session) {
+    openFresh(DashboardPage(api: _api, session: session));
+  }
+
+  /// Both tokens are saved: open the dashboard as the saved employee, with Master mode off, and tell the server
+  /// so it agrees.
+  Future<void> _openSavedDashboard() async {
+    final employee = await _tokens.readEmployee();
+    // A session token with no saved employee can't fill the sidebar, so sign in again.
+    if (employee == null) {
+      await _tokens.deleteSessionToken();
+      openFresh(_employeeSignIn());
+      return;
+    }
+    _openDashboard(Session(employeeName: employee.name));
+    try {
+      await _auth.masterModeOff();
+    } on ApiException {
+      // Master mode is already off in the app. If the session ended, ApiClient has opened employee sign-in.
+      // Until the Master mode endpoints are merged into IMP-Back, this call gets a 404.
+    }
   }
 }
