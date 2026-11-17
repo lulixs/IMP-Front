@@ -2,7 +2,7 @@
 
 The tablet app for IMP (Inventory Management Platform), built with Flutter. It talks to the backend in [IMP-Back](https://github.com/lulixs/IMP-Back).
 
-**Status:** first-time setup, sign-in, and the dashboard are built. The app picks its first screen from the saved tokens (`lib/startup.dart`): first-time setup or tablet setup on a new tablet (it asks the server which), employee sign-in with only a device token, and the dashboard as the saved employee with both. First-time setup is saved on the server and saves both tokens and the employee. The other sign-in screens still use stand-ins: tablet setup, signing back in, and employee sign-in accept any valid email, any password except `wrong`, and any PIN except `000000`, and list one stub employee, Dan Finkle. The password `wrong` and the PIN `000000` always fail, so the error box can be seen. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The sidebar shows the signed-in employee, with a Master tag that turns Master mode on after a popup and a Master sign-in (unlocking the Master-only items, which open the same popup while locked) or off after just the popup and a Switch user button that returns to the PIN screen. The other sidebar items and the bottom bar buttons don't do anything yet. `ApiClient` can send GET, POST, PUT, and DELETE, shows the server's error sentence, and sends a saved sign-in token (kept in `TokenStore` with `flutter_secure_storage`). On the four sign-in error codes it clears the right tokens and the app opens employee sign-in, signing back in, or tablet setup. `AuthApi` has every call in IMP-Back's auth.md, and saves the tokens and employee it gets back. Apart from first-time setup, nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
+**Status:** first-time setup, sign-in, and the dashboard are built. The app picks its first screen from the saved tokens (`lib/startup.dart`): first-time setup or tablet setup on a new tablet (it asks the server which), employee sign-in with only a device token, and the dashboard as the saved employee with both. First-time setup is saved on the server and saves both tokens and the employee. The other sign-in screens still use stand-ins: tablet setup, signing back in, and employee sign-in accept any valid email, any password except `wrong`, and any PIN except `000000`, and list one stub employee, Dan Finkle. The password `wrong` and the PIN `000000` always fail, so the error box can be seen. The dashboard loads real data from `GET /api/dashboard`, so the backend and its database must be running (see IMP-Back's README). The Box page (`lib/screens/boxes/box_page.dart`) is built with sample data, with its popups for re-racking, the storage timer, deleting, and leaving with unsaved changes, but nothing opens it from the app yet. Open it with `-t lib/dev_box_page.dart`. Its Save changes, Delete box, and Print label only print a line to the terminal until it is connected to the server. The sidebar shows the signed-in employee, with a Master tag that turns Master mode on after a popup and a Master sign-in (unlocking the Master-only items, which open the same popup while locked) or off after just the popup and a Switch user button that returns to the PIN screen. The other sidebar items and the bottom bar buttons don't do anything yet. `ApiClient` can send GET, POST, PUT, and DELETE, shows the server's error sentence, and sends a saved sign-in token (kept in `TokenStore` with `flutter_secure_storage`). On the four sign-in error codes it clears the right tokens and the app opens employee sign-in, signing back in, or tablet setup. `AuthApi` has every call in IMP-Back's auth.md, and saves the tokens and employee it gets back. Apart from first-time setup, nothing is saved to the backend yet. The app runs in Chrome and on the team's Android emulator, with the server address chosen by a flag when it starts (see Android emulator).
 
 ## Setup (once per computer)
 
@@ -84,7 +84,7 @@ adb devices                                # should show: emulator-5554   device
 flutter pub get                            # only needed after pulling changes
 flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:5000
 ```
-To land on the dashboard once you have signed in on the emulator, add `-t lib/dev_dashboard.dart`. Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which works in Chrome, and on a USB phone after `adb reverse` (below).
+To land on the dashboard once you have signed in on the emulator, add `-t lib/dev_dashboard.dart`. To open the Box page with sample data, add `-t lib/dev_box_page.dart` instead (it doesn't need the backend). Inside the emulator, `localhost` means the emulator itself, and `10.0.2.2` means your computer. The server address is always chosen with this flag (D-158). Never edit it in `lib/config.dart`. Without the flag the app uses `http://localhost:5000`, which works in Chrome, and on a USB phone after `adb reverse` (below).
 
 **When you're done:** press `q` in terminal 2, `Ctrl+C` in terminal 1, and close the emulator window. To stop the database too, run `docker compose stop` in IMP-Back's `db` folder (your data is kept).
 
@@ -110,6 +110,7 @@ lib/
 ├── main.dart              starts the app on the screen startup.dart picks, and opens each sign-in screen
 ├── dev_dashboard.dart     the normal start-up, for dashboard work: opens the dashboard when signed in (debugging only)
 ├── dev_login.dart         starts the app on sign-in (debugging only)
+├── dev_box_page.dart      starts the app on the Box page with sample data (debugging only)
 ├── theme.dart             colors and text field style
 ├── validators.dart        form checks shared by more than one screen, like the email check
 ├── session.dart           who is signed in and whether Master mode is on
@@ -120,7 +121,8 @@ lib/
 ├── screens/
 │   ├── setup/             first-time setup: Master account, tablet name, first employee, confirmation
 │   ├── login/             sign-in: Master account, then employee name and PIN
-│   └── dashboard/         dashboard page and category cards
+│   ├── dashboard/         dashboard page and category cards
+│   └── boxes/             the Box page, its popups, and its sample data
 └── widgets/
     ├── app_shell.dart     sidebar and bottom bar around the main pages
     └── common.dart        small pieces shared by every screen
