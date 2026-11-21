@@ -19,7 +19,7 @@ The tablet app for IMP (Inventory Management Platform), built with Flutter. It t
 ```
 flutter run -d chrome                              # normal start, on the screen the saved tokens pick
 flutter run -d chrome -t lib/dev_dashboard.dart    # opens the dashboard once you have signed in on this browser
-flutter run -d chrome -t lib/dev_login.dart        # skips setup and opens sign-in
+flutter run -d chrome -t lib/dev_login.dart        # skips setup and opens the Master sign-in (signing a tablet back in)
 ```
 
 `lib/dev_dashboard.dart` and `lib/dev_login.dart` are for debugging only. Release builds always start from `lib/main.dart`, which picks the first screen from the saved tokens.
