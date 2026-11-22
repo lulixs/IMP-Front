@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 import 'api/api_client.dart';
 import 'api/api_exception.dart';
+import 'api/api_scope.dart';
 import 'api/auth_api.dart';
 import 'api/token_store.dart';
 import 'screens/dashboard/dashboard_page.dart';
@@ -46,6 +47,8 @@ class _ImpAppState extends State<ImpApp> {
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      // Every screen can reach the shared ApiClient, for helpers like openBox
+      builder: (context, child) => ApiScope(api: _api, child: child!),
       routes: {AppShell.switchUserRoute: (_) => _employeeSignIn()},
       home: switch (widget.start) {
         null => _startPage(),
