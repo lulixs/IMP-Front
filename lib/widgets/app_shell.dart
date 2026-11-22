@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/api_exception.dart';
 import '../screens/login/master_login_page.dart';
+import '../screens/scanner/scanner_page.dart';
 import '../session.dart';
 import '../theme.dart';
 import 'common.dart';
@@ -30,8 +31,8 @@ const _masterItems = [
 /// The card at the bottom of the sidebar shows who is signed in. Its Master tag turns
 /// Master mode on after a popup and a Master sign-in, or off after just the popup, and
 /// Switch user goes back to the PIN screen. While Master mode is off, tapping a locked
-/// Master-only item opens the same popup. The other sidebar items and the bottom buttons
-/// don't do anything yet.
+/// Master-only item opens the same popup. Scan opens the QR scanner. The other sidebar items
+/// and bottom buttons don't do anything yet.
 class AppShell extends StatelessWidget {
   /// The route Switch user opens: the employee PIN screen with nothing behind it.
   /// ImpApp registers it, since it knows how to open the dashboard after the next sign-in.
@@ -347,12 +348,16 @@ class _BottomBar extends StatelessWidget {
         color: AppColors.soft,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _BottomButton(Icons.qr_code_scanner, 'Scan'),
-          _BottomButton(Icons.search, 'Search'),
-          _BottomButton(Icons.notifications_none, 'Alerts'),
+          _BottomButton(
+            Icons.qr_code_scanner,
+            'Scan',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ScannerPage())),
+          ),
+          const _BottomButton(Icons.search, 'Search'),
+          const _BottomButton(Icons.notifications_none, 'Alerts'),
         ],
       ),
     );
@@ -362,19 +367,26 @@ class _BottomBar extends StatelessWidget {
 class _BottomButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _BottomButton(this.icon, this.label);
+
+  /// Null for buttons that don't do anything yet.
+  final VoidCallback? onTap;
+  const _BottomButton(this.icon, this.label, {this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 38, color: AppColors.ink),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 13)),
-        ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 38, color: AppColors.ink),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(fontSize: 13)),
+          ],
+        ),
       ),
     );
   }

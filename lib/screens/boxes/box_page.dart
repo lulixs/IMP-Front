@@ -23,7 +23,7 @@ class BoxPage extends StatefulWidget {
   /// Called after the employee confirms Delete box. Connect deletes the box and leaves the page.
   final Future<void> Function() onDelete;
 
-  /// Called when Print label is tapped. Labels are built in week 13.
+  /// Called when Print label is tapped. Labels are built in week 13, and plugged in where openBox opens this page.
   final VoidCallback onPrint;
 
   const BoxPage({
@@ -141,7 +141,8 @@ class _BoxPageState extends State<BoxPage> {
       });
       return true;
     } on ApiException catch (e) {
-      _showMessage(e.message);
+      // A set code means ApiClient already opened another screen (D-168)
+      if (e.code == null) _showMessage(e.message);
       return false;
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -161,7 +162,7 @@ class _BoxPageState extends State<BoxPage> {
     try {
       await widget.onDelete();
     } on ApiException catch (e) {
-      _showMessage(e.message);
+      if (e.code == null) _showMessage(e.message);
     }
   }
 
