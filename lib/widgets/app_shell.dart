@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_exception.dart';
+import '../api/api_scope.dart';
+import '../screens/boxes/boxes_screen.dart';
+import '../screens/dashboard/dashboard_page.dart';
 import '../screens/login/master_login_page.dart';
 import '../screens/scanner/scanner_page.dart';
 import '../session.dart';
@@ -31,8 +34,9 @@ const _masterItems = [
 /// The card at the bottom of the sidebar shows who is signed in. Its Master tag turns
 /// Master mode on after a popup and a Master sign-in, or off after just the popup, and
 /// Switch user goes back to the PIN screen. While Master mode is off, tapping a locked
-/// Master-only item opens the same popup. Scan opens the QR scanner. The other sidebar items
-/// and bottom buttons don't do anything yet.
+/// Master-only item opens the same popup. Scan opens the QR scanner. Dashboard and Boxes in the sidebar open
+/// their pages, and Search opens Boxes with the search field ready to type in. The other sidebar items and
+/// Alerts (week 14) don't do anything yet.
 class AppShell extends StatelessWidget {
   /// The route Switch user opens: the employee PIN screen with nothing behind it.
   /// ImpApp registers it, since it knows how to open the dashboard after the next sign-in.
@@ -55,7 +59,11 @@ class AppShell extends StatelessWidget {
     final main = Column(
       children: [
         Expanded(child: child),
-        const _BottomBar(),
+        _BottomBar(
+          onScan: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ScannerPage())),
+          onSearch: () => _showSection(context, session, Section.boxes, focusSearch: true),
+          // Alerts is built in week 14
+        ),
       ],
     );
 
@@ -83,6 +91,23 @@ class AppShell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Opens a sidebar page in place of the current one, so Back from a box goes to the list and the stack
+/// doesn't grow every time the employee switches pages. Only Dashboard and Boxes exist so far.
+/// [focusSearch] puts the cursor in the Boxes search field (the Search button).
+void _showSection(BuildContext context, Session session, Section section, {bool focusSearch = false}) {
+  final api = ApiScope.of(context);
+  final navigator = Navigator.of(context);
+  final Widget page = switch (section) {
+    Section.dashboard => DashboardPage(api: api, session: session),
+    Section.boxes => BoxesScreen(api: api, session: session, focusSearch: focusSearch),
+    _ => throw ArgumentError('No page for $section yet'),
+  };
+  // On a narrow screen the sidebar is a drawer, which is a route of its own. Close it first, or it would be
+  // the route that gets replaced and the old page would stay underneath.
+  if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) navigator.pop();
+  navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => page));
 }
 
 class _Sidebar extends StatelessWidget {
@@ -120,7 +145,7 @@ class _Sidebar extends StatelessWidget {
       children: [
         const Center(child: Logo()),
         const SizedBox(height: 18),
-        for (final item in _mainItems) _NavItem(item.$2, item.$3, active: active == item.$1),
+        for (final item in _mainItems) _NavItem(item.$2, item.$3, active: active == item.$1, onTap: _tapFor(context, item.$1)),
         const Padding(
           padding: EdgeInsets.fromLTRB(4, 16, 4, 7),
           child: Text(
@@ -139,6 +164,19 @@ class _Sidebar extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  /// What tapping a main item does. Dashboard and Boxes open their pages, and the current page's item just closes
+  /// the drawer. Categories isn't built yet.
+  VoidCallback? _tapFor(BuildContext context, Section section) {
+    if (section != Section.dashboard && section != Section.boxes) return null;
+    return () {
+      if (section != active) {
+        _showSection(context, session, section);
+      } else if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
+        Navigator.of(context).pop();
+      }
+    };
   }
 
   /// Asks first, then turns Master mode the other way, through the server. Turning it on also needs the
@@ -338,7 +376,11 @@ class _NavItem extends StatelessWidget {
 }
 
 class _BottomBar extends StatelessWidget {
-  const _BottomBar();
+  /// Null for buttons that don't do anything yet.
+  final VoidCallback? onScan;
+  final VoidCallback? onSearch;
+
+  const _BottomBar({this.onScan, this.onSearch});
 
   @override
   Widget build(BuildContext context) {
@@ -351,12 +393,9 @@ class _BottomBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _BottomButton(
-            Icons.qr_code_scanner,
-            'Scan',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ScannerPage())),
-          ),
-          const _BottomButton(Icons.search, 'Search'),
+          _BottomButton(Icons.qr_code_scanner, 'Scan', onTap: onScan),
+          _BottomButton(Icons.search, 'Search', onTap: onSearch),
+          // Alerts is built in week 14. Give it an onTap here then.
           const _BottomButton(Icons.notifications_none, 'Alerts'),
         ],
       ),
