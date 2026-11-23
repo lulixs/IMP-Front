@@ -379,9 +379,8 @@ class _BottomBar extends StatelessWidget {
   /// Null for buttons that don't do anything yet.
   final VoidCallback? onScan;
   final VoidCallback? onSearch;
-  final VoidCallback? onAlerts;
 
-  const _BottomBar({this.onScan, this.onSearch, this.onAlerts});
+  const _BottomBar({this.onScan, this.onSearch});
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +395,8 @@ class _BottomBar extends StatelessWidget {
         children: [
           _BottomButton(Icons.qr_code_scanner, 'Scan', onTap: onScan),
           _BottomButton(Icons.search, 'Search', onTap: onSearch),
-          _BottomButton(Icons.notifications_none, 'Alerts', onTap: onAlerts),
+          // Alerts is built in week 14. Give it an onTap here then.
+          const _BottomButton(Icons.notifications_none, 'Alerts'),
         ],
       ),
     );
